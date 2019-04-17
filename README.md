@@ -66,6 +66,10 @@ Which gives us `./results/indexcov-nf_report.html`.
 
 # Report
 
+## Interactive example
+
+See: https://brwnj.github.io/indexcov-nf/
+
 ## Scaled chromosome coverage
 
 Significant regions will be displayed in color atop a gray region which represents the upper and lower bounds of a given point minus any values deemed significant.
