@@ -23,9 +23,9 @@ With Docker or Singularity:
 
 ```
 nextflow run brwnj/indexcov-nf -latest -profile docker \
-	--indexes 'data/indexes/*.crai' \
-	--fai data/g1k_v37_decoy.fa.fai \
-	--gff data/Homo_sapiens.GRCh37.82.gff3.gz
+    --indexes 'data/indexes/*.crai' \
+    --fai data/g1k_v37_decoy.fa.fai \
+    --gff data/Homo_sapiens.GRCh37.82.gff3.gz
 ```
 
 Which gives us `./results/indexcov-nf_report.html`.
@@ -33,34 +33,35 @@ Which gives us `./results/indexcov-nf_report.html`.
 ## Required arguments
 
 + `--indexes`
-	+ quoted file path with wildcard ('*.crai') to cram or bam indexes
+    + quoted file path with wildcard ('*.crai') to cram or bam indexes
 + `--fai`
-	+ file path to .fai reference index
+    + file path to .fai reference index
 + `--gff`
-	+ file path to gff matching genome build of `--indexes`
+    + file path to gff matching genome build of `--indexes`
 
 ## Options
 
 + `--outdir`
-	+ output directory for results
-	+ default: "./results"
+    + output directory for results
+    + default: "./results"
 + `--sexchroms`
-	+ sex chromosomes as they are in `--indexes`
-	+ default: "X,Y"
+    + sex chromosomes as they are in `--indexes`
+    + default: "X,Y"
 + `--exclude`
-	+ regular expression of chromosomes to skip
-	+ default: "^GL|^hs|^chrEBV$|M$|MT$|^NC|_random$|Un_|^HLA\\-|_alt$|hap\\d+$"
+    + regular expression of chromosomes to skip
+    + default: "^GL|^hs|^chrEBV$|M$|MT$|^NC|_random$|Un_|^HLA\\-|_alt$|hap\\d+$"
 + `--zthreshold`
-	+ a sample must greater than this many standard deviations in order to be found siginificant
-	+ default: 4
+    + a sample must greater than this many standard deviations in order to be found siginificant
+    + default: 4
 + `--distancethreshold`
-	+ consecutive significant points must span this distance in order to pass this filter
-	+ default: 150000
+    + consecutive significant points must span this distance in order to pass this filter
+    + default: 150000
 + `--slop`
-	+ leading and trailing segments added to significant regions to make them more visible
-	+ default: 500000
+    + leading and trailing segments added to significant regions to make them more visible
+    + default: 500000
 + `--project`
-	+ can be used to name your indexcov to something more meaningful	+ default: "NF"
+    + can be used to name your indexcov to something more meaningful
+    + default: "NF"
 
 
 # Report
