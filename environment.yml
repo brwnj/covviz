@@ -1,0 +1,10 @@
+name: indexcov-nf-1.0
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - goleft=0.2.1    # doesn't yet exist
+  - python=2.7.15
+  - numpy>=1.16.2
+  - scipy>=1.2.1
