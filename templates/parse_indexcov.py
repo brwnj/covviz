@@ -191,6 +191,7 @@ def parse_bed(
     ped,
     sample_col="sample_id",
     sex_col="sex",
+    sex_chroms="X,Y",
     z_threshold=3.5,
     distance_threshold=150000,
     slop=500000,
@@ -212,8 +213,7 @@ def parse_bed(
         "#bcbd22",  # curry yellow-green
         "#17becf",  # blue-teal
     ]
-    sex_chroms = ["chrX", "chrY"]
-    sex_chroms = [i.strip("chr") for i in sex_chroms]
+    sex_chroms = [i.strip("chr") for i in sex_chroms.split(",")]
 
     groups = None
     if ped:
@@ -756,6 +756,7 @@ ped = "$pedfile"
 sample_col = "sample_id"
 # known from indexcov
 sex_col = "sex"
+sex_chroms = "$params.sexchroms"
 z_threshold = $params.zthreshold
 distance_threshold = $params.distancethreshold
 slop = $params.slop
@@ -772,6 +773,7 @@ traces, samples = parse_bed(
     ped,
     sample_col,
     sex_col,
+    sex_chroms,
     z_threshold,
     distance_threshold,
     slop,
