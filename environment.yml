@@ -1,4 +1,4 @@
-name: indexcov-nf-1.0
+name: covviz-1.0
 channels:
   - bioconda
   - conda-forge

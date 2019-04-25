@@ -12,11 +12,11 @@ project = params.project ?: 'NF'
 
 log.info("\n")
 log.info("====================================================================")
-log.info("indexcov-nf - find large, coverage-based variations on chromosomes ")
+log.info("covviz - find large, coverage-based variations on chromosomes ")
 log.info("====================================================================")
 log.info("\n")
 log.info("#### Homepage / Documentation")
-log.info("https://github.com/brwnj/indexcov-nf")
+log.info("https://github.com/brwnj/covviz")
 log.info("#### Authors")
 log.info("Joe Brown <brwnjm@gmail.com>")
 log.info("\n")
@@ -32,7 +32,7 @@ log.info("Distance threshold           --distancethreshold: ${params.distancethr
 log.info("Significant region slop      --slop             : ${params.slop}")
 log.info("\n")
 log.info("====================================================================")
-log.info("indexcov-nf is free and unrestricted for non-commercial use.       ")
+log.info("covviz is free and unrestricted for non-commercial use.       ")
 log.info("For commercial use, please contact [bpedersen@base2genomics.com].  ")
 log.info("====================================================================")
 log.info("\n")
@@ -83,7 +83,7 @@ process build_report {
     file gff
 
     output:
-    file("indexcov-nf_report.html")
+    file("covviz_report.html")
 
     script:
     template 'parse_indexcov.py'

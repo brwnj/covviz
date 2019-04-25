@@ -1,4 +1,4 @@
-# indexcov-nf
+# covviz
 
 Browse your coverage; a companion viewer for indexcov results.
 
@@ -7,9 +7,9 @@ to quickly estimate the coverage across samples then find regions of large,
 coverage-based anomalies. The aim is to highlight regions of significant
 (passing the user's z-score threshold) and sustained (beyond user specified
 distance) deviation from the majority of samples. Significance is determined
-using z-scores (`--zthreshold`) for all samples at all points, but in order to
-be highlighted, points must be significant consecutively throughout a user
-specified distance (`--distancethreshold`).
+using z-scores (`--zthreshold`) for all samples at all points using median
+absolute deviation, but in order to be highlighted, points must be significant
+consecutively throughout a user specified distance (`--distancethreshold`).
 
 # Usage
 
@@ -22,13 +22,13 @@ curl -s https://get.nextflow.io | bash
 With Docker or Singularity:
 
 ```
-nextflow run brwnj/indexcov-nf -latest -profile docker \
+nextflow run brwnj/covviz -latest -profile docker \
     --indexes 'data/indexes/*.crai' \
     --fai data/g1k_v37_decoy.fa.fai \
     --gff data/Homo_sapiens.GRCh37.82.gff3.gz
 ```
 
-Which gives us `./results/indexcov-nf_report.html`.
+Which gives us `./results/covviz_report.html`.
 
 ## Required arguments
 
@@ -68,7 +68,7 @@ Which gives us `./results/indexcov-nf_report.html`.
 
 ## Interactive example
 
-See: https://brwnj.github.io/indexcov-nf/
+See: https://brwnj.github.io/covviz/
 
 ## Scaled chromosome coverage
 
@@ -88,5 +88,5 @@ Clicking on plot traces highlights the line and searches the metadata. Double-cl
 
 # License
 
-indexcov-nf is free and unrestricted for non-commercial use. For commercial use,
+covviz is free and unrestricted for non-commercial use. For commercial use,
 please contact [bpedersen@base2genomics.com].
