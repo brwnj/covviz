@@ -11,7 +11,6 @@ from collections import defaultdict
 from itertools import groupby
 
 import numpy as np
-from scipy import stats
 
 try:
     from itertools import ifilterfalse as filterfalse
@@ -172,13 +171,27 @@ def parse_sex_groups(filename, sample_col, sex_col):
     return groups
 
 
+def identify_outliers(a, threshold=3.5):
+    med = np.median(a)
+    mad = np.median([np.abs(i - med) for i in a])
+    # https://www.ibm.com/support/knowledgecenter/en/SSEP7J_11.1.0/com.ibm.swg.ba.cognos.ug_ca_dshb.doc/modified_z.html
+    if mad == 0:
+        meanAD = np.mean(np.abs(a - np.mean(a)))
+        divisor = 1.253314 * meanAD
+        modified_z_scores = [(i - med) / divisor for i in a]
+    else:
+        divisor = 1.4826 * mad
+        modified_z_scores = [(i - med) / divisor for i in a]
+    return np.where(np.abs(modified_z_scores) > threshold)
+
+
 def parse_bed(
     path,
     exclude,
     ped,
     sample_col="sample_id",
     sex_col="sex",
-    z_threshold=10,
+    z_threshold=3.5,
     distance_threshold=150000,
     slop=500000,
 ):
@@ -260,9 +273,8 @@ def parse_bed(
                         bounds["upper"][group_index].append(sample_values[0])
                         bounds["lower"][group_index].append(sample_values[0])
                     else:
-                        z_scores = np.abs(stats.zscore(sample_values))
                         # indexes of passing values
-                        passing = np.where(z_scores > z_threshold)[0]
+                        passing = identify_outliers(sample_values, z_threshold)[0]
                         # remove those indexes from the list
                         for j in sorted(passing, reverse=True):
                             sample_values.pop(j)
