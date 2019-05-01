@@ -51,8 +51,8 @@ Which gives us `./results/covviz_report.html`.
     + regular expression of chromosomes to skip
     + default: "^GL|^hs|^chrEBV$|M$|MT$|^NC|_random$|Un_|^HLA\\-|_alt$|hap\\d+$"
 + `--zthreshold`
-    + a sample must greater than this many standard deviations in order to be found siginificant
-    + default: 4
+    + a sample must greater than this many standard deviations in order to be found significant
+    + default: 3.5
 + `--distancethreshold`
     + consecutive significant points must span this distance in order to pass this filter
     + default: 150000
