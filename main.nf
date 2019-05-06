@@ -51,6 +51,7 @@ Channel
 
 process run_indexcov {
     publishDir path: "$outdir/indexcov", mode: "copy"
+    container 'brentp/smoove:v0.2.3'
     memory 4.GB
     cache 'deep'
 
@@ -75,6 +76,7 @@ process run_indexcov {
 
 process build_report {
     publishDir path: "$outdir", mode: "copy", pattern: "*.html", overwrite: true
+    container 'jupyter/scipy-notebook:7d427e7a4dde'
 
     input:
     file pedfile from ped
