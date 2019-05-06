@@ -976,7 +976,7 @@ const highlight_plot_traces = (sample_id) => {
 
 # variables from nextflow
 bed = "$bedfile"
-exclude = "$params.exclude".replace("~", "")
+exclude = "$params.exclude".replace("~", "").replace(",", "|")
 ped = "$pedfile"
 # known from indexcov
 sample_col = "sample_id"
