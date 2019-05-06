@@ -52,7 +52,7 @@ Channel
 process run_indexcov {
     publishDir path: "$outdir/indexcov", mode: "copy"
     container 'brentp/smoove:v0.2.3'
-    memory 4.GB
+    memory 8.GB
     cache 'deep'
 
     input:
