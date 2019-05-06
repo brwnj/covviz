@@ -506,7 +506,7 @@ TEMPLATE = [TEMPLATE]
 
 # variables from nextflow
 bed = "$bedfile"
-exclude = "$params.exclude"
+exclude = "$params.exclude".replace("~", "")
 ped = "$pedfile"
 # known from indexcov
 sample_col = "sample_id"
