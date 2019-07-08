@@ -1,16 +1,21 @@
 #!/usr/bin/env python
 # coding=utf-8
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import csv
 import gzip
 import json
 import logging
+import math
 import re
 import sys
+from builtins import chr, int, object, range
 from collections import defaultdict
 from itertools import groupby
 
 import numpy as np
+
 
 try:
     from itertools import ifilterfalse as filterfalse
@@ -20,6 +25,228 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 COV_COLOR = "rgba(108,117,125,0.2)"
 gzopen = lambda f: gzip.open(f, "rt") if f.endswith(".gz") else open(f)
+
+"""
+BEGIN LZSTRING
+
+https://github.com/gkovacs/lz-string-python
+
+The MIT License (MIT)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
+keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+
+class Object(object):
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+def _compress(uncompressed, bitsPerChar, getCharFromInt):
+    if (uncompressed is None):
+        return ""
+
+    context_dictionary = {}
+    context_dictionaryToCreate= {}
+    context_c = ""
+    context_wc = ""
+    context_w = ""
+    context_enlargeIn = 2 # Compensate for the first entry which should not count
+    context_dictSize = 3
+    context_numBits = 2
+    context_data = []
+    context_data_val = 0
+    context_data_position = 0
+
+    for ii in range(len(uncompressed)):
+        context_c = uncompressed[ii]
+        if context_c not in context_dictionary:
+            context_dictionary[context_c] = context_dictSize
+            context_dictSize += 1
+            context_dictionaryToCreate[context_c] = True
+
+        context_wc = context_w + context_c
+        if context_wc in context_dictionary:
+            context_w = context_wc
+        else:
+            if context_w in context_dictionaryToCreate:
+                if ord(context_w[0]) < 256:
+                    for i in range(context_numBits):
+                        context_data_val = (context_data_val << 1)
+                        if context_data_position == bitsPerChar-1:
+                            context_data_position = 0
+                            context_data.append(getCharFromInt(context_data_val))
+                            context_data_val = 0
+                        else:
+                            context_data_position += 1
+                    value = ord(context_w[0])
+                    for i in range(8):
+                        context_data_val = (context_data_val << 1) | (value & 1)
+                        if context_data_position == bitsPerChar - 1:
+                            context_data_position = 0
+                            context_data.append(getCharFromInt(context_data_val))
+                            context_data_val = 0
+                        else:
+                            context_data_position += 1
+                        value = value >> 1
+
+                else:
+                    value = 1
+                    for i in range(context_numBits):
+                        context_data_val = (context_data_val << 1) | value
+                        if context_data_position == bitsPerChar - 1:
+                            context_data_position = 0
+                            context_data.append(getCharFromInt(context_data_val))
+                            context_data_val = 0
+                        else:
+                            context_data_position += 1
+                        value = 0
+                    value = ord(context_w[0])
+                    for i in range(16):
+                        context_data_val = (context_data_val << 1) | (value & 1)
+                        if context_data_position == bitsPerChar - 1:
+                            context_data_position = 0
+                            context_data.append(getCharFromInt(context_data_val))
+                            context_data_val = 0
+                        else:
+                            context_data_position += 1
+                        value = value >> 1
+                context_enlargeIn -= 1
+                if context_enlargeIn == 0:
+                    context_enlargeIn = math.pow(2, context_numBits)
+                    context_numBits += 1
+                del context_dictionaryToCreate[context_w]
+            else:
+                value = context_dictionary[context_w]
+                for i in range(context_numBits):
+                    context_data_val = (context_data_val << 1) | (value & 1)
+                    if context_data_position == bitsPerChar - 1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                    value = value >> 1
+
+            context_enlargeIn -= 1
+            if context_enlargeIn == 0:
+                context_enlargeIn = math.pow(2, context_numBits)
+                context_numBits += 1
+
+            # Add wc to the dictionary.
+            context_dictionary[context_wc] = context_dictSize
+            context_dictSize += 1
+            context_w = str(context_c)
+
+    # Output the code for w.
+    if context_w != "":
+        if context_w in context_dictionaryToCreate:
+            if ord(context_w[0]) < 256:
+                for i in range(context_numBits):
+                    context_data_val = (context_data_val << 1)
+                    if context_data_position == bitsPerChar-1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                value = ord(context_w[0])
+                for i in range(8):
+                    context_data_val = (context_data_val << 1) | (value & 1)
+                    if context_data_position == bitsPerChar - 1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                    value = value >> 1
+            else:
+                value = 1
+                for i in range(context_numBits):
+                    context_data_val = (context_data_val << 1) | value
+                    if context_data_position == bitsPerChar - 1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                    value = 0
+                value = ord(context_w[0])
+                for i in range(16):
+                    context_data_val = (context_data_val << 1) | (value & 1)
+                    if context_data_position == bitsPerChar - 1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                    value = value >> 1
+            context_enlargeIn -= 1
+            if context_enlargeIn == 0:
+                context_enlargeIn = math.pow(2, context_numBits)
+                context_numBits += 1
+            del context_dictionaryToCreate[context_w]
+        else:
+            value = context_dictionary[context_w]
+            for i in range(context_numBits):
+                context_data_val = (context_data_val << 1) | (value & 1)
+                if context_data_position == bitsPerChar - 1:
+                    context_data_position = 0
+                    context_data.append(getCharFromInt(context_data_val))
+                    context_data_val = 0
+                else:
+                    context_data_position += 1
+                value = value >> 1
+
+    context_enlargeIn -= 1
+    if context_enlargeIn == 0:
+        context_enlargeIn = math.pow(2, context_numBits)
+        context_numBits += 1
+
+    # Mark the end of the stream
+    value = 2
+    for i in range(context_numBits):
+        context_data_val = (context_data_val << 1) | (value & 1)
+        if context_data_position == bitsPerChar - 1:
+            context_data_position = 0
+            context_data.append(getCharFromInt(context_data_val))
+            context_data_val = 0
+        else:
+            context_data_position += 1
+        value = value >> 1
+
+    # Flush the last char
+    while True:
+        context_data_val = (context_data_val << 1)
+        if context_data_position == bitsPerChar - 1:
+            context_data.append(getCharFromInt(context_data_val))
+            break
+        else:
+           context_data_position += 1
+
+    return "".join(context_data)
+
+
+class LZString(object):
+    @staticmethod
+    def compressToBase64(uncompressed):
+        if uncompressed is None:
+            return ""
+        res = _compress(uncompressed, 6, lambda a: keyStrBase64[a])
+        # To produce valid Base64
+        end = len(res) % 4
+        if end > 0:
+            res += "="*(4 - end)
+        return res
+
+"""
+END LZSTRING
+"""
 
 
 def validate_samples(samples, groups):
@@ -501,6 +728,12 @@ def parse_ped(path, traces, sample_col, sex_chroms):
     return traces
 
 
+def compress_data(data):
+    json_str = json.dumps(data).encode("utf-8", "ignore").decode("utf-8")
+    json_str = json_str.replace('NaN', 'null')
+    return LZString().compressToBase64(json_str)
+
+
 TEMPLATE = [TEMPLATE]
 
 
@@ -540,6 +773,7 @@ logging.info("parsing roc file (%s)" % roc)
 traces = parse_roc(roc, traces, samples)
 traces = parse_ped(ped, traces, sample_col, sex_chroms)
 with open(output, "w") as fh:
-    html = TEMPLATE.replace("[DATA]", json.dumps(traces))
+    compressed_json_data = compress_data(traces)
+    html = TEMPLATE.replace("[DATA]", compressed_json_data)
     print(html, file=fh)
 logging.info("processing complete")

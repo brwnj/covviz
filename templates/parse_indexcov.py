@@ -1,16 +1,21 @@
 #!/usr/bin/env python
 # coding=utf-8
-from __future__ import print_function
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
 import csv
 import gzip
 import json
 import logging
+import math
 import re
 import sys
+from builtins import chr, int, object, range
 from collections import defaultdict
 from itertools import groupby
 
 import numpy as np
+
 
 try:
     from itertools import ifilterfalse as filterfalse
@@ -20,6 +25,228 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 COV_COLOR = "rgba(108,117,125,0.2)"
 gzopen = lambda f: gzip.open(f, "rt") if f.endswith(".gz") else open(f)
+
+"""
+BEGIN LZSTRING
+
+https://github.com/gkovacs/lz-string-python
+
+The MIT License (MIT)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+"""
+keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+
+class Object(object):
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+def _compress(uncompressed, bitsPerChar, getCharFromInt):
+    if (uncompressed is None):
+        return ""
+
+    context_dictionary = {}
+    context_dictionaryToCreate= {}
+    context_c = ""
+    context_wc = ""
+    context_w = ""
+    context_enlargeIn = 2 # Compensate for the first entry which should not count
+    context_dictSize = 3
+    context_numBits = 2
+    context_data = []
+    context_data_val = 0
+    context_data_position = 0
+
+    for ii in range(len(uncompressed)):
+        context_c = uncompressed[ii]
+        if context_c not in context_dictionary:
+            context_dictionary[context_c] = context_dictSize
+            context_dictSize += 1
+            context_dictionaryToCreate[context_c] = True
+
+        context_wc = context_w + context_c
+        if context_wc in context_dictionary:
+            context_w = context_wc
+        else:
+            if context_w in context_dictionaryToCreate:
+                if ord(context_w[0]) < 256:
+                    for i in range(context_numBits):
+                        context_data_val = (context_data_val << 1)
+                        if context_data_position == bitsPerChar-1:
+                            context_data_position = 0
+                            context_data.append(getCharFromInt(context_data_val))
+                            context_data_val = 0
+                        else:
+                            context_data_position += 1
+                    value = ord(context_w[0])
+                    for i in range(8):
+                        context_data_val = (context_data_val << 1) | (value & 1)
+                        if context_data_position == bitsPerChar - 1:
+                            context_data_position = 0
+                            context_data.append(getCharFromInt(context_data_val))
+                            context_data_val = 0
+                        else:
+                            context_data_position += 1
+                        value = value >> 1
+
+                else:
+                    value = 1
+                    for i in range(context_numBits):
+                        context_data_val = (context_data_val << 1) | value
+                        if context_data_position == bitsPerChar - 1:
+                            context_data_position = 0
+                            context_data.append(getCharFromInt(context_data_val))
+                            context_data_val = 0
+                        else:
+                            context_data_position += 1
+                        value = 0
+                    value = ord(context_w[0])
+                    for i in range(16):
+                        context_data_val = (context_data_val << 1) | (value & 1)
+                        if context_data_position == bitsPerChar - 1:
+                            context_data_position = 0
+                            context_data.append(getCharFromInt(context_data_val))
+                            context_data_val = 0
+                        else:
+                            context_data_position += 1
+                        value = value >> 1
+                context_enlargeIn -= 1
+                if context_enlargeIn == 0:
+                    context_enlargeIn = math.pow(2, context_numBits)
+                    context_numBits += 1
+                del context_dictionaryToCreate[context_w]
+            else:
+                value = context_dictionary[context_w]
+                for i in range(context_numBits):
+                    context_data_val = (context_data_val << 1) | (value & 1)
+                    if context_data_position == bitsPerChar - 1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                    value = value >> 1
+
+            context_enlargeIn -= 1
+            if context_enlargeIn == 0:
+                context_enlargeIn = math.pow(2, context_numBits)
+                context_numBits += 1
+
+            # Add wc to the dictionary.
+            context_dictionary[context_wc] = context_dictSize
+            context_dictSize += 1
+            context_w = str(context_c)
+
+    # Output the code for w.
+    if context_w != "":
+        if context_w in context_dictionaryToCreate:
+            if ord(context_w[0]) < 256:
+                for i in range(context_numBits):
+                    context_data_val = (context_data_val << 1)
+                    if context_data_position == bitsPerChar-1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                value = ord(context_w[0])
+                for i in range(8):
+                    context_data_val = (context_data_val << 1) | (value & 1)
+                    if context_data_position == bitsPerChar - 1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                    value = value >> 1
+            else:
+                value = 1
+                for i in range(context_numBits):
+                    context_data_val = (context_data_val << 1) | value
+                    if context_data_position == bitsPerChar - 1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                    value = 0
+                value = ord(context_w[0])
+                for i in range(16):
+                    context_data_val = (context_data_val << 1) | (value & 1)
+                    if context_data_position == bitsPerChar - 1:
+                        context_data_position = 0
+                        context_data.append(getCharFromInt(context_data_val))
+                        context_data_val = 0
+                    else:
+                        context_data_position += 1
+                    value = value >> 1
+            context_enlargeIn -= 1
+            if context_enlargeIn == 0:
+                context_enlargeIn = math.pow(2, context_numBits)
+                context_numBits += 1
+            del context_dictionaryToCreate[context_w]
+        else:
+            value = context_dictionary[context_w]
+            for i in range(context_numBits):
+                context_data_val = (context_data_val << 1) | (value & 1)
+                if context_data_position == bitsPerChar - 1:
+                    context_data_position = 0
+                    context_data.append(getCharFromInt(context_data_val))
+                    context_data_val = 0
+                else:
+                    context_data_position += 1
+                value = value >> 1
+
+    context_enlargeIn -= 1
+    if context_enlargeIn == 0:
+        context_enlargeIn = math.pow(2, context_numBits)
+        context_numBits += 1
+
+    # Mark the end of the stream
+    value = 2
+    for i in range(context_numBits):
+        context_data_val = (context_data_val << 1) | (value & 1)
+        if context_data_position == bitsPerChar - 1:
+            context_data_position = 0
+            context_data.append(getCharFromInt(context_data_val))
+            context_data_val = 0
+        else:
+            context_data_position += 1
+        value = value >> 1
+
+    # Flush the last char
+    while True:
+        context_data_val = (context_data_val << 1)
+        if context_data_position == bitsPerChar - 1:
+            context_data.append(getCharFromInt(context_data_val))
+            break
+        else:
+           context_data_position += 1
+
+    return "".join(context_data)
+
+
+class LZString(object):
+    @staticmethod
+    def compressToBase64(uncompressed):
+        if uncompressed is None:
+            return ""
+        res = _compress(uncompressed, 6, lambda a: keyStrBase64[a])
+        # To produce valid Base64
+        end = len(res) % 4
+        if end > 0:
+            res += "="*(4 - end)
+        return res
+
+"""
+END LZSTRING
+"""
 
 
 def validate_samples(samples, groups):
@@ -501,6 +728,12 @@ def parse_ped(path, traces, sample_col, sex_chroms):
     return traces
 
 
+def compress_data(data):
+    json_str = json.dumps(data).encode("utf-8", "ignore").decode("utf-8")
+    json_str = json_str.replace('NaN', 'null')
+    return LZString().compressToBase64(json_str)
+
+
 TEMPLATE = """<!DOCTYPE html>
 <html>
 <head>
@@ -618,7 +851,33 @@ TEMPLATE = """<!DOCTYPE html>
 </body>
 
 <script>
-const data = [DATA]
+// MIT License
+
+// Copyright (c) 2013 pieroxy
+
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+var LZString=function(){function o(o,r){if(!t[o]){t[o]={};for(var n=0;n<o.length;n++)t[o][o.charAt(n)]=n}return t[o][r]}var r=String.fromCharCode,n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",e="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-\$",t={},i={compressToBase64:function(o){if(null==o)return"";var r=i._compress(o,6,function(o){return n.charAt(o)});switch(r.length%4){default:case 0:return r;case 1:return r+"===";case 2:return r+"==";case 3:return r+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(e){return o(n,r.charAt(e))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(o){return null==o?"":""==o?null:i._decompress(o.length,16384,function(r){return o.charCodeAt(r)-32})},compressToUint8Array:function(o){for(var r=i.compress(o),n=new Uint8Array(2*r.length),e=0,t=r.length;t>e;e++){var s=r.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null===o||void 0===o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;t>e;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(o){return null==o?"":i._compress(o,6,function(o){return e.charAt(o)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(n){return o(e,r.charAt(n))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(o,r,n){if(null==o)return"";var e,t,i,s={},p={},u="",c="",a="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<o.length;i+=1)if(u=o.charAt(i),Object.prototype.hasOwnProperty.call(s,u)||(s[u]=f++,p[u]=!0),c=a+u,Object.prototype.hasOwnProperty.call(s,c))a=c;else{if(Object.prototype.hasOwnProperty.call(p,a)){if(a.charCodeAt(0)<256){for(e=0;h>e;e++)m<<=1,v==r-1?(v=0,d.push(n(m)),m=0):v++;for(t=a.charCodeAt(0),e=0;8>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;h>e;e++)m=m<<1|t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=a.charCodeAt(0),e=0;16>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}l--,0==l&&(l=Math.pow(2,h),h++),delete p[a]}else for(t=s[a],e=0;h>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;l--,0==l&&(l=Math.pow(2,h),h++),s[c]=f++,a=String(u)}if(""!==a){if(Object.prototype.hasOwnProperty.call(p,a)){if(a.charCodeAt(0)<256){for(e=0;h>e;e++)m<<=1,v==r-1?(v=0,d.push(n(m)),m=0):v++;for(t=a.charCodeAt(0),e=0;8>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;h>e;e++)m=m<<1|t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=a.charCodeAt(0),e=0;16>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}l--,0==l&&(l=Math.pow(2,h),h++),delete p[a]}else for(t=s[a],e=0;h>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;l--,0==l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;h>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==r-1){d.push(n(m));break}v++}return d.join("")},decompress:function(o){return null==o?"":""==o?null:i._decompress(o.length,32768,function(r){return o.charCodeAt(r)})},_decompress:function(o,n,e){var t,i,s,p,u,c,a,l,f=[],h=4,d=4,m=3,v="",w=[],A={val:e(0),position:n,index:1};for(i=0;3>i;i+=1)f[i]=i;for(p=0,c=Math.pow(2,2),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;switch(t=p){case 0:for(p=0,c=Math.pow(2,8),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;l=r(p);break;case 1:for(p=0,c=Math.pow(2,16),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;l=r(p);break;case 2:return""}for(f[3]=l,s=l,w.push(l);;){if(A.index>o)return"";for(p=0,c=Math.pow(2,m),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;switch(l=p){case 0:for(p=0,c=Math.pow(2,8),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;f[d++]=r(p),l=d-1,h--;break;case 1:for(p=0,c=Math.pow(2,16),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;f[d++]=r(p),l=d-1,h--;break;case 2:return w.join("")}if(0==h&&(h=Math.pow(2,m),m++),f[l])v=f[l];else{if(l!==d)return null;v=s+s.charAt(0)}w.push(v),f[d++]=s+v.charAt(0),h--,s=v,0==h&&(h=Math.pow(2,m),m++)}}};return i}();"function"==typeof define&&define.amd?define(function(){return LZString}):"undefined"!=typeof module&&null!=module&&(module.exports=LZString);
+</script>
+
+<script>
+const compressed_data = "[DATA]"
+const data = JSON.parse(LZString.decompressFromBase64(compressed_data))
 const sample_column = data.sample_column
 const cov_color = 'rgba(108,117,125,0.2)'
 // const highlight_color = 'rgb(255,147,0)'
@@ -1014,7 +1273,8 @@ logging.info("parsing roc file (%s)" % roc)
 traces = parse_roc(roc, traces, samples)
 traces = parse_ped(ped, traces, sample_col, sex_chroms)
 with open(output, "w") as fh:
-    html = TEMPLATE.replace("[DATA]", json.dumps(traces))
+    compressed_json_data = compress_data(traces)
+    html = TEMPLATE.replace("[DATA]", compressed_json_data)
     print(html, file=fh)
 logging.info("processing complete")
 
