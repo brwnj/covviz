@@ -1,6 +1,6 @@
 # covviz
 
-Browse your coverage; a companion viewer for indexcov results.
+Coverage visualization; a companion viewer for indexcov results.
 
 Here we use [indexcov](https://github.com/brentp/goleft/tree/master/indexcov)
 to quickly estimate the coverage across samples then find regions of large,
