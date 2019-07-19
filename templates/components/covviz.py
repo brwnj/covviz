@@ -526,6 +526,8 @@ def parse_bed(
 
             json_output = []
             # add the area traces
+            marker_color = "rgba(108,117,125,0.1)" if len(samples) > 1 else plotly_colors[0]
+            fill_color = "rgba(108,117,125,0.3)" if len(samples) > 1 else plotly_colors[0]
             for trace_index in range(len(bounds["upper"])):
                 for bound in ["lower", "upper"]:
                     trace = dict(
@@ -535,11 +537,11 @@ def parse_bed(
                         type="scatter",
                         mode="lines",
                         hoverinfo="none",
-                        marker={"color": "rgba(108,117,125,0.1)"},
+                        marker={"color": marker_color},
                     )
                     if bound == "upper":
                         trace["fill"] = "tonexty"
-                        trace["fillcolor"] = "rgba(108,117,125,0.3)"
+                        trace["fillcolor"] = fill_color
                     json_output.append(trace)
             # add the sample traces for the outlier plots atop area traces
             for trace_index, (sample, trace_data) in enumerate(traces.items()):
