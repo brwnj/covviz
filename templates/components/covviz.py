@@ -578,6 +578,7 @@ def parse_gff(path, traces):
         dict of lists
     """
     include = traces.keys()
+    gene_search = list()
     with gzopen(path) as fh:
         cleaned = filterfalse(lambda i: i[0] == "#", fh)
         name_re = re.compile(r"Name=([^;]*)")
@@ -593,9 +594,11 @@ def parse_gff(path, traces):
                 toks = line.strip().split("\t")
                 if toks[2] != "gene":
                     continue
-                genes.append(
-                    [int(toks[3]), int(toks[4]), [name_re.findall(toks[8])[0]]]
-                )
+                start = int(toks[3])
+                end = int(toks[4])
+                name = name_re.findall(toks[8])[0]
+                genes.append([int(toks[3]), int(toks[4]), [name]])
+                gene_search.append(dict(n=name, v=[chr, start, end]))
             if genes:
                 # merge overlapping genes
                 merged_genes = merge_intervals(genes)
@@ -632,6 +635,7 @@ def parse_gff(path, traces):
                     line={"width": 10, "color": "#444"},
                 )
                 traces[chr].append(gene_trace)
+    traces["genes"] = gene_search
     return traces
 
 

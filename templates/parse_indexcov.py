@@ -578,6 +578,7 @@ def parse_gff(path, traces):
         dict of lists
     """
     include = traces.keys()
+    gene_search = list()
     with gzopen(path) as fh:
         cleaned = filterfalse(lambda i: i[0] == "#", fh)
         name_re = re.compile(r"Name=([^;]*)")
@@ -593,9 +594,11 @@ def parse_gff(path, traces):
                 toks = line.strip().split("\t")
                 if toks[2] != "gene":
                     continue
-                genes.append(
-                    [int(toks[3]), int(toks[4]), [name_re.findall(toks[8])[0]]]
-                )
+                start = int(toks[3])
+                end = int(toks[4])
+                name = name_re.findall(toks[8])[0]
+                genes.append([int(toks[3]), int(toks[4]), [name]])
+                gene_search.append(dict(n=name, v=[chr, start, end]))
             if genes:
                 # merge overlapping genes
                 merged_genes = merge_intervals(genes)
@@ -632,6 +635,7 @@ def parse_gff(path, traces):
                     line={"width": 10, "color": "#444"},
                 )
                 traces[chr].append(gene_trace)
+    traces["genes"] = gene_search
     return traces
 
 
@@ -742,25 +746,21 @@ TEMPLATE = """<!DOCTYPE html>
     <title>covviz - Base2 Genomics</title>
     <script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.18/sl-1.3.0/datatables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"></script>
     <script type="text/javascript" src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/bs4/dt-1.10.18/sl-1.3.0/datatables.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.bootstrap3.min.css">
     <link rel="stylesheet" type="text/css" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <style type="text/css">
     .disabled_div {pointer-events: none; opacity: 0.4}
-    .selected {background-color: rgba(161,234,247,0.5) !important; color: black !important}
+    tr.selected {background-color: rgba(161,234,247,0.5) !important; color: black !important}
     .tab-content > .tab-pane:not(.active),
     .pill-content > .pill-pane:not(.active) {display: block; height: 0; overflow-y: hidden;}
     .nav-pills .nav-link.active, .nav-pills .show > .nav-link {background-color: #6c757d !important;}
-    table.dataTable thead th.sorting:after,
-    table.dataTable thead th.sorting_asc:after,
-    table.dataTable thead th.sorting_desc:after,
-    table.dataTable thead th.sorting:before,
-    table.dataTable thead th.sorting_asc:before,
-    table.dataTable thead th.sorting_desc:before {
-        font-family: FontAwesome !important;
-    }
-    </style>
+    .form-control.selectize-control {padding: 0px 0px 0px;}
+    .selectize-input {min-height: 38px !important; padding: 7px 12px !important;}
+    .remove-single {color: gray !important; top: -1px !important; font-size: 20px !important;}    </style>
 </head>
 <body>
     <nav class="navbar navbar-dark navbar-expand-md p-0" style="background-color: #3C444C;">
@@ -782,11 +782,16 @@ TEMPLATE = """<!DOCTYPE html>
         <div class="tab-content border-bottom">
             <div class="tab-pane fade show active" id="chrom_coverage" role="tabpanel" aria-labelledby="scaled_tab">
                 <div class="row">
-                    <div class="col-12">
+                    <div class="col-12" id="chrom_selector_div">
                         <div id="chrom_selector" class="btn-group btn-group-toggle d-flex justify-content-center flex-wrap" data-toggle="buttons">
                             <div class="input-group-prepend">
                                 <span class="input-group-text">Chromosome:</span>
                             </div>
+                        </div>
+                    </div>
+                    <div class="col-2" id="gene_search_div" hidden>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="gene-search" aria-label="gene-search">
                         </div>
                     </div>
                 </div>
@@ -904,17 +909,19 @@ var cov_traces = []
 var scaled_traces = []
 var scatter_point_color = 'rgba(31,120,180,0.5)'
 var scatter_point_color_light = 'rgba(255,255,255,0.1)'
+var gene_search_obj
 
 const load_buttons = (arr) => {
     var btngrp = document.getElementById("chrom_selector");
     for (var i = 0; i < arr.length; i++) {
         if (i == 0) {
-            btngrp.insertAdjacentHTML('beforeend', '<label class="btn btn-secondary active"><input type="radio" name="options" data-name="' + arr[i] + '" autocomplete="off" checked> ' + arr[i] + ' </label>')
+            btngrp.insertAdjacentHTML('beforeend', '<label class="btn btn-secondary active" id="chrbtn' + arr[i] + '"><input type="radio" name="options" data-name="' + arr[i] + '" autocomplete="off" id="chrinp' + arr[i] + '" checked="true"> ' + arr[i] + ' </label>')
         } else {
-            btngrp.insertAdjacentHTML('beforeend', '<label class="btn btn-secondary"><input type="radio" name="options" data-name="' + arr[i] + '" autocomplete="off"> ' + arr[i] + ' </label>')
+            btngrp.insertAdjacentHTML('beforeend', '<label class="btn btn-secondary" id="chrbtn' + arr[i] + '"><input type="radio" name="options" data-name="' + arr[i] + '" autocomplete="off" id="chrinp' + arr[i] + '"> ' + arr[i] + ' </label>')
         }
     }
     let chr = \$('#chrom_selector input:radio:checked').data('name')
+    build_gene_search()
     build_cov(chr)
     build_scaled(chr)
 }
@@ -936,12 +943,16 @@ const build_cov = (chr) => {
     cov_plot.on("plotly_doubleclick", handle_plot_doubleclick)
 }
 
-const build_scaled = (chr) => {
+const build_scaled = (chr, range=false) => {
     // hide the placeholder
     \$('#scaled_plot_placeholder').prop('hidden', true)
     // show the plot
     \$('#scaled_plot').prop('hidden', false)
     scaled_layout.xaxis.autorange = true
+    if (range) {
+        scaled_layout.xaxis.autorange = false
+        scaled_layout.xaxis.range = range
+    }
     scaled_traces = data[chr]
 
     let scaled_plot = document.getElementById("scaled_plot")
@@ -1097,6 +1108,9 @@ const build_global_qc = () => {
 \$('#chrom_selector').on("change", () => {
     // \$('#tab_names a[href="#scaled"]').tab('show')
     let chr = \$('#chrom_selector input:radio:checked').data('name')
+    if ("genes" in data) {
+        gene_search_obj.clear()
+    }
     \$("#scaled_plot").addClass("disabled_div")
     if (ped) {
         let tables = \$('.dataTable').DataTable()
@@ -1225,6 +1239,65 @@ const highlight_plot_traces = (sample_id) => {
     }
     Plotly.react("cov_plot", c_traces, cov_layout)
     Plotly.react("scaled_plot", s_traces, scaled_layout)
+}
+
+const build_gene_search = () => {
+    if ("genes" in data) {
+
+        // re-organize the buttons and show the search field
+        \$('#chrom_selector_div').removeClass('col-12').addClass('col-10')
+        \$("#gene_search_div").prop('hidden', false)
+
+        // n = name, v = [chrom, start, end]
+        let gene_search = \$('#gene-search').selectize({
+            plugins: ['remove_button'],
+            valueField: 'v',
+            labelField: 'n',
+            searchField: 'n',
+            options: data['genes'],
+            placeholder: 'Gene ID',
+            mode: 'single',
+            closeAfterSelect: false,
+            maxItems: 1,
+            maxOptions: 20,
+        })
+        gene_search_obj = gene_search[0].selectize
+        // register handler
+        \$('#gene-search').on('change', function() {
+            update_scaled_range(gene_search_obj.items[0])
+        })
+    }
+}
+
+const update_scaled_range = (coords) => {
+    if (!coords) {
+        return
+    }
+
+    coords = coords.split(',')
+    let chrom = coords[0]
+    let padding = 100000
+    let start = parseInt(coords[1]) - padding
+    let end = parseInt(coords[2]) + padding
+
+    let current_chr = \$('#chrom_selector input:radio:checked').data('name')
+
+    if (current_chr != chrom) {
+        // change the button
+        \$("#chrbtn" + current_chr).removeClass('active')
+        \$("#chrinp" + current_chr).prop('checked', false)
+        \$("#chrbtn" + chrom).addClass('active')
+        \$("#chrinp" + chrom).prop('checked', true)
+
+        // temp disable
+        \$("#scaled_plot").addClass("disabled_div")
+
+        // change both plots to currently selected chromosome
+        build_cov(chrom)
+    }
+
+    // zoom the scaled plot
+    build_scaled(chrom, [start, end])
 }
 
 \$(document).ready(function() {
