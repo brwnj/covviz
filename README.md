@@ -19,6 +19,9 @@ Install `nextflow`:
 curl -s https://get.nextflow.io | bash
 ```
 
+Full nextflow installation instructions are available at:
+https://www.nextflow.io/
+
 To simplify prerequisite software installations and software version tracking,
 we strongly recommend running `covviz` using Docker or Singularity. Docker
 installation instructions for your operating system are available at:
