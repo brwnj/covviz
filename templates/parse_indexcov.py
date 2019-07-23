@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # coding=utf-8
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
+import argparse
 import csv
 import gzip
 import json
@@ -22,24 +22,16 @@ try:
 except ImportError:
     from itertools import filterfalse
 
-logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 COV_COLOR = "rgba(108,117,125,0.2)"
 gzopen = lambda f: gzip.open(f, "rt") if f.endswith(".gz") else open(f)
 
 """
-BEGIN LZSTRING
-
+LZ string
 https://github.com/gkovacs/lz-string-python
-
-The MIT License (MIT)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+MIT License
 """
 keyStrBase64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+
 
 class Object(object):
     def __init__(self, **kwargs):
@@ -48,15 +40,15 @@ class Object(object):
 
 
 def _compress(uncompressed, bitsPerChar, getCharFromInt):
-    if (uncompressed is None):
+    if uncompressed is None:
         return ""
 
     context_dictionary = {}
-    context_dictionaryToCreate= {}
+    context_dictionaryToCreate = {}
     context_c = ""
     context_wc = ""
     context_w = ""
-    context_enlargeIn = 2 # Compensate for the first entry which should not count
+    context_enlargeIn = 2
     context_dictSize = 3
     context_numBits = 2
     context_data = []
@@ -77,8 +69,8 @@ def _compress(uncompressed, bitsPerChar, getCharFromInt):
             if context_w in context_dictionaryToCreate:
                 if ord(context_w[0]) < 256:
                     for i in range(context_numBits):
-                        context_data_val = (context_data_val << 1)
-                        if context_data_position == bitsPerChar-1:
+                        context_data_val = context_data_val << 1
+                        if context_data_position == bitsPerChar - 1:
                             context_data_position = 0
                             context_data.append(getCharFromInt(context_data_val))
                             context_data_val = 0
@@ -148,8 +140,8 @@ def _compress(uncompressed, bitsPerChar, getCharFromInt):
         if context_w in context_dictionaryToCreate:
             if ord(context_w[0]) < 256:
                 for i in range(context_numBits):
-                    context_data_val = (context_data_val << 1)
-                    if context_data_position == bitsPerChar-1:
+                    context_data_val = context_data_val << 1
+                    if context_data_position == bitsPerChar - 1:
                         context_data_position = 0
                         context_data.append(getCharFromInt(context_data_val))
                         context_data_val = 0
@@ -222,12 +214,12 @@ def _compress(uncompressed, bitsPerChar, getCharFromInt):
 
     # Flush the last char
     while True:
-        context_data_val = (context_data_val << 1)
+        context_data_val = context_data_val << 1
         if context_data_position == bitsPerChar - 1:
             context_data.append(getCharFromInt(context_data_val))
             break
         else:
-           context_data_position += 1
+            context_data_position += 1
 
     return "".join(context_data)
 
@@ -241,12 +233,8 @@ class LZString(object):
         # To produce valid Base64
         end = len(res) % 4
         if end > 0:
-            res += "="*(4 - end)
+            res += "=" * (4 - end)
         return res
-
-"""
-END LZSTRING
-"""
 
 
 def validate_samples(samples, groups):
@@ -343,12 +331,19 @@ def get_traces(data, samples, outliers, distance_threshold, slop):
                     if (index_values[0] - distance_idx) < 0:
                         break
                     try:
-                        traces[sample]["x"].insert(0, data["x"][index_values[0] - distance_idx])
-                        traces[sample]["y"].insert(0, data[sample][index_values[0] - distance_idx])
+                        traces[sample]["x"].insert(
+                            0, data["x"][index_values[0] - distance_idx]
+                        )
+                        traces[sample]["y"].insert(
+                            0, data[sample][index_values[0] - distance_idx]
+                        )
                     except IndexError:
                         # x_values[0] is the first data point
                         break
-                    extension_length -= (data["x"][index_values[0] - distance_idx + 1] - data["x"][index_values[0] - distance_idx])
+                    extension_length -= (
+                        data["x"][index_values[0] - distance_idx + 1]
+                        - data["x"][index_values[0] - distance_idx]
+                    )
                     distance_idx += 1
 
                 traces[sample]["x"].extend(x_values)
@@ -359,11 +354,18 @@ def get_traces(data, samples, outliers, distance_threshold, slop):
                 distance_idx = 1
                 while extension_length > 0:
                     try:
-                        traces[sample]["x"].append(data["x"][index_values[-1] + distance_idx])
-                        traces[sample]["y"].append(data[sample][index_values[-1] + distance_idx])
+                        traces[sample]["x"].append(
+                            data["x"][index_values[-1] + distance_idx]
+                        )
+                        traces[sample]["y"].append(
+                            data[sample][index_values[-1] + distance_idx]
+                        )
                     except IndexError:
                         break
-                    extension_length -= (data["x"][index_values[-1] + distance_idx] - data["x"][index_values[-1] + distance_idx - 1])
+                    extension_length -= (
+                        data["x"][index_values[-1] + distance_idx]
+                        - data["x"][index_values[-1] + distance_idx - 1]
+                    )
                     distance_idx += 1
 
     # fix overlapping regions after adding slop
@@ -526,8 +528,12 @@ def parse_bed(
 
             json_output = []
             # add the area traces
-            marker_color = "rgba(108,117,125,0.1)" if len(samples) > 1 else plotly_colors[0]
-            fill_color = "rgba(108,117,125,0.3)" if len(samples) > 1 else plotly_colors[0]
+            marker_color = (
+                "rgba(108,117,125,0.1)" if len(samples) > 1 else plotly_colors[0]
+            )
+            fill_color = (
+                "rgba(108,117,125,0.3)" if len(samples) > 1 else plotly_colors[0]
+            )
             for trace_index in range(len(bounds["upper"])):
                 for bound in ["lower", "upper"]:
                     trace = dict(
@@ -678,7 +684,9 @@ def parse_roc(path, traces, samples):
 
 def parse_ped(path, traces, sample_col, sex_chroms):
     table_data = list()
-    ped_data = dict(inferred=defaultdict(list), bins=defaultdict(list), pca=defaultdict(list))
+    ped_data = dict(
+        inferred=defaultdict(list), bins=defaultdict(list), pca=defaultdict(list)
+    )
     sex_chroms = [i.strip() for i in sex_chroms.split(",")]
     float_vals = ["slope", "p.out", "PC1", "PC2", "PC3", "PC4", "PC5"]
     int_vals = ["sex", "bins.out", "bins.lo", "bins.hi", "bins.in"]
@@ -710,11 +718,15 @@ def parse_ped(path, traces, sample_col, sex_chroms):
                 ped_data["inferred"]["y"].append(0)
             # male
             if row["sex"] == 1:
-                ped_data["inferred"]["color"].append('rgba(12,44,132,0.5)')
-                ped_data["inferred"]["hover"].append('Sample: %s<br>Inferred X CN: 1' % (row["sample_id"],))
+                ped_data["inferred"]["color"].append("rgba(12,44,132,0.5)")
+                ped_data["inferred"]["hover"].append(
+                    "Sample: %s<br>Inferred X CN: 1" % (row["sample_id"],)
+                )
             else:
-                ped_data["inferred"]["color"].append('rgba(227,26,28,0.5)')
-                ped_data["inferred"]["hover"].append('Sample: %s<br>Inferred X CN: 2' % (row["sample_id"],))
+                ped_data["inferred"]["color"].append("rgba(227,26,28,0.5)")
+                ped_data["inferred"]["hover"].append(
+                    "Sample: %s<br>Inferred X CN: 2" % (row["sample_id"],)
+                )
             # bin plot
             total = row["bins.in"] + row["bins.out"]
             ped_data["bins"]["samples"].append(row["sample_id"])
@@ -736,7 +748,7 @@ def parse_ped(path, traces, sample_col, sex_chroms):
 
 def compress_data(data):
     json_str = json.dumps(data).encode("utf-8", "ignore").decode("utf-8")
-    json_str = json_str.replace('NaN', 'null')
+    json_str = json_str.replace("NaN", "null")
     return LZString().compressToBase64(json_str)
 
 
@@ -1312,44 +1324,87 @@ const update_scaled_range = (coords) => {
 </html>
 """
 
-# variables from nextflow
-bed = "$bedfile"
-exclude = "$params.exclude".replace("~", "").replace(",", "|")
-ped = "$pedfile"
-# known from indexcov
-sample_col = "sample_id"
-# known from indexcov
-sex_col = "sex"
-sex_chroms = "$params.sexchroms"
-z_threshold = $params.zthreshold
-distance_threshold = $params.distancethreshold
-slop = $params.slop
-gff = "$gff"
-roc = "$rocfile"
-# consistent between workflow and template
-output = "covviz_report.html"
-
-# start processing
-logging.info("parsing bed file (%s)" % bed)
-traces, samples = parse_bed(
+def main(
     bed,
     exclude,
     ped,
-    sample_col,
-    sex_col,
     sex_chroms,
     z_threshold,
     distance_threshold,
     slop,
-)
-logging.info("parsing gff file (%s)" % gff)
-traces = parse_gff(gff, traces)
-logging.info("parsing roc file (%s)" % roc)
-traces = parse_roc(roc, traces, samples)
-traces = parse_ped(ped, traces, sample_col, sex_chroms)
-with open(output, "w") as fh:
-    compressed_json_data = compress_data(traces)
-    html = TEMPLATE.replace("[DATA]", compressed_json_data)
-    print(html, file=fh)
-logging.info("processing complete")
+    gff,
+    roc,
+    output,
+):
+    exclude = exclude.replace("~", "").replace(",", "|")
+    sample_col = "sample_id"
+    sex_col = "sex"
+    # casting types here to make argparse work without nextflow context
+    z_threshold = float(z_threshold)
+    distance_threshold = int(distance_threshold)
+    slop = int(slop)
+
+    logging.info("parsing bed file (%s)" % bed)
+    traces, samples = parse_bed(
+        bed,
+        exclude,
+        ped,
+        sample_col,
+        sex_col,
+        sex_chroms,
+        z_threshold,
+        distance_threshold,
+        slop,
+    )
+    logging.info("parsing gff file (%s)" % gff)
+    traces = parse_gff(gff, traces)
+    logging.info("parsing roc file (%s)" % roc)
+    traces = parse_roc(roc, traces, samples)
+    traces = parse_ped(ped, traces, sample_col, sex_chroms)
+    with open(output, "w") as fh:
+        compressed_json_data = compress_data(traces)
+        html = TEMPLATE.replace("[DATA]", compressed_json_data)
+        print(html, file=fh)
+    logging.info("processing complete")
+
+
+if __name__ == "__main__":
+
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    p.add_argument("--bed", default="$bedfile", help="indexcov .bed output")
+    p.add_argument(
+        "--exclude",
+        default="$params.exclude",
+        help="chromosome regex to exclude from analysis",
+    )
+    p.add_argument("--ped", default="$pedfile", help="indexcov .ped output")
+    p.add_argument(
+        "--sex-chroms",
+        default="$params.sexchroms",
+        help="sex chromosomes, e.g. chrX,chrY",
+    )
+    p.add_argument("--z-threshold", default="$params.zthreshold")
+    p.add_argument("--distance-threshold", default="$params.distancethreshold")
+    p.add_argument("--slop", default="$params.slop")
+    p.add_argument("--gff", default="$gff", help=".gff reference file")
+    p.add_argument("--roc", default="$rocfile", help="indexcov .roc output")
+    p.add_argument("--output", default="covviz_report.html", help="output file path")
+
+    args = p.parse_args()
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+
+    main(
+        args.bed,
+        args.exclude,
+        args.ped,
+        args.sex_chroms,
+        args.z_threshold,
+        args.distance_threshold,
+        args.slop,
+        args.gff,
+        args.roc,
+        args.output,
+    )
 
