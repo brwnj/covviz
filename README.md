@@ -19,7 +19,12 @@ Install `nextflow`:
 curl -s https://get.nextflow.io | bash
 ```
 
-With Docker or Singularity:
+To simplify prerequisite software installations and software version tracking,
+we strongly recommend running `covviz` using Docker or Singularity. Docker
+installation instructions for your operating system are available at:
+https://docs.docker.com/install/
+
+Then, with Docker or Singularity we run:
 
 ```
 nextflow run brwnj/covviz -latest -profile docker \
