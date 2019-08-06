@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding=utf-8
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import argparse
@@ -23,6 +22,7 @@ except ImportError:
     from itertools import filterfalse
 
 COV_COLOR = "rgba(108,117,125,0.2)"
+MIN_SAMPLES = 6
 gzopen = lambda f: gzip.open(f, "rt") if f.endswith(".gz") else open(f)
 
 """
@@ -460,7 +460,7 @@ def parse_bed(
             data = defaultdict(list)
             bounds = dict(upper=[], lower=[])
             outliers = defaultdict(list)
-            chrom = chr.strip("chr")
+            chrom = chr.lstrip("chr")
             chroms.append(chrom)
 
             # capture plot area and outlier traces
@@ -497,6 +497,16 @@ def parse_bed(
                             v = 3
                         data[sample].append(v)
                         sample_values.append(v)
+
+                    # skip finding outliers for few samples
+                    if len(samples) <= MIN_SAMPLES:
+                        # save everything as an outlier
+                        for sample in samples_of_group:
+                            outliers[sample].append(
+                                dict(index=x_index, x=x_value, y=data[sample][-1])
+                            )
+                        continue
+
                     # skip running test if everything is the same
                     if len(set(sample_values)) == 1:
                         bounds["upper"][group_index].append(sample_values[0])
@@ -527,13 +537,10 @@ def parse_bed(
             traces = get_traces(data, samples, outliers, distance_threshold, slop)
 
             json_output = []
+
+            marker_color = "rgba(108,117,125,0.1)"
+            fill_color = "rgba(108,117,125,0.3)"
             # add the area traces
-            marker_color = (
-                "rgba(108,117,125,0.1)" if len(samples) > 1 else plotly_colors[0]
-            )
-            fill_color = (
-                "rgba(108,117,125,0.3)" if len(samples) > 1 else plotly_colors[0]
-            )
             for trace_index in range(len(bounds["upper"])):
                 for bound in ["lower", "upper"]:
                     trace = dict(
