@@ -126,6 +126,8 @@ deemed significant.
 When plotting fewer samples than `--min-samples`, the gray area plot
 will not be displayed. Instead, all sample plot traces will be shown.
 
+![min_samples](data/img/min_samples.png)
+
 ## Proportions covered
 
 ![proportional_coverage](data/img/proportional_coverage.png)
