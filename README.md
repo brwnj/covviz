@@ -84,7 +84,7 @@ Which gives us `./results/covviz_report.html`.
 + `--gff`
     + file path to gff matching genome build of `--indexes`
 
-### Options
+### Workflow Options
 
 + `--outdir`
     + output directory for results
