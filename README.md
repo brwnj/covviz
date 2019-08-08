@@ -1,17 +1,54 @@
 # covviz
 
-Coverage visualization; a companion viewer for indexcov results.
+Coverage visualization; a many-sample coverage browser.
 
-Here we use [indexcov](https://github.com/brentp/goleft/tree/master/indexcov)
-to quickly estimate the coverage across samples then find regions of large,
-coverage-based anomalies. The aim is to highlight regions of significant
+The aim of `covviz` is to highlight regions of significant
 (passing the user's z-score threshold) and sustained (beyond user specified
 distance) deviation from the majority of samples. Significance is determined
 using z-scores (`--zthreshold`) for all samples at all points using median
 absolute deviation, but in order to be highlighted, points must be significant
 consecutively throughout a user specified distance (`--distancethreshold`).
 
-# Usage
+If you are analyzing a low number of samples, deviation may be irrelevant. In
+this case, we can set `--min-samples` to be greater than our sample total
+to skip Z-threshold calculation and plot coverages for all samples at all
+points.
+
+# The Python Package
+
+`covviz` is installable via `pip install -U covviz`. It's currently quite
+dependent upon `indexcov` output, but we're working to make this more
+generalized -- to accept any bed input, normalize the coverage, and calculate
+the ROC curves.
+
+## Usage
+
+To analyze your coverage data it needs to be in bed3+ format and include a
+header with sample IDs. The first three column headers are agnostic, but
+for samples test_sample1, test_sample2, and test_sample3, this would look like:
+
+```
+#chrom   start   end   test_sample1   test_sample2   test_sample3
+```
+
+Then CLI usage is:
+
+```
+covviz --ped $ped --roc $roc $bed
+```
+
+# The Nextflow Workflow
+
+If you're starting with alignment indexes, this workflow aims to simply the
+process of obtaining coverage and generating the coverage browser.
+
+We use [indexcov](https://github.com/brentp/goleft/tree/master/indexcov)
+to quickly estimate the coverage across samples then find regions of large,
+coverage-based anomalies.
+
+The output of `indexcov` is then directly input into `covviz`.
+
+## Usage
 
 Install `nextflow`:
 
@@ -38,7 +75,7 @@ nextflow run brwnj/covviz -latest -profile docker \
 
 Which gives us `./results/covviz_report.html`.
 
-## Required arguments
+### Required arguments
 
 + `--indexes`
     + quoted file path with wildcard ('*.crai') to cram or bam indexes
@@ -47,7 +84,7 @@ Which gives us `./results/covviz_report.html`.
 + `--gff`
     + file path to gff matching genome build of `--indexes`
 
-## Options
+### Options
 
 + `--outdir`
     + output directory for results
@@ -80,9 +117,14 @@ See: https://brwnj.github.io/covviz/
 
 ## Scaled chromosome coverage
 
-Significant regions will be displayed in color atop a gray region which represents the upper and lower bounds of a given point minus any values deemed significant.
+Significant regions will be displayed in color atop a gray region which
+represents the upper and lower bounds of a given point minus any values
+deemed significant.
 
 ![significant_regions](data/img/significant_regions.png)
+
+When plotting fewer samples than `--min-samples`, the gray area plot
+will not be displayed. Instead, all sample plot traces will be shown.
 
 ## Proportions covered
 
@@ -92,7 +134,11 @@ The metadata table will be displayed below the plots.
 
 ## Interaction
 
-Clicking on plot traces highlights the line and searches the metadata. Double-clicking de-selects lines, resets the plot, and de-selects samples from the table. Clicking on the gene track launches a search for the gene's respective Gene Card. In cases where genes overlap, multiple windows/tabs will be opened.
+Clicking on plot traces highlights the line and searches the metadata.
+Double-clicking de-selects lines, resets the plot, and de-selects
+samples from the table. Clicking on the gene track launches a search
+for the gene's respective Gene Card. In cases where genes overlap,
+multiple windows/tabs will be opened.
 
 # License
 

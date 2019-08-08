@@ -76,7 +76,7 @@ process run_indexcov {
 
 process build_report {
     publishDir path: "$outdir", mode: "copy", pattern: "*.html", overwrite: true
-    container 'jupyter/scipy-notebook:7d427e7a4dde'
+    container 'brwnj/covviz:v1.0.4'
 
     input:
     file pedfile from ped
@@ -88,5 +88,9 @@ process build_report {
     file("covviz_report.html")
 
     script:
-    template 'parse_indexcov.py'
+    """
+    covviz --min-samples ${params.minsamples} --sex-chroms ${params.sexchroms} --exclude '${params.exclude}' \
+        --z-threshold ${params.zthreshold} --distance-threshold ${params.distancethreshold} \
+        --slop ${params.slop} --ped ${pedfile} --gff ${gff} --roc ${rocfile} ${bedfile}
+    """
 }
