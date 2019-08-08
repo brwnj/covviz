@@ -5,9 +5,9 @@ Coverage visualization; a many-sample coverage browser.
 The aim of `covviz` is to highlight regions of significant
 (passing the user's z-score threshold) and sustained (beyond user specified
 distance) deviation from the majority of samples. Significance is determined
-using z-scores (`--zthreshold`) for all samples at all points using median
-absolute deviation, but in order to be highlighted, points must be significant
-consecutively throughout a user specified distance (`--distancethreshold`).
+using z-scores for all samples at all points using median absolute deviation,
+but in order to be highlighted, points must be significant consecutively
+throughout a user specified distance.
 
 If you are analyzing a low number of samples, deviation may be irrelevant. In
 this case, we can set `--min-samples` to be greater than our sample total
