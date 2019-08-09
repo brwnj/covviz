@@ -31,7 +31,7 @@
                 <li class="nav-item">
                     <a class="nav-link text-white active" data-toggle="tab" role="tab" href="#chrom_coverage" aria-controls="chrom_coverage" aria-selected="true">Chromosome Coverage</a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item" id="global_qc_nav" hidden>
                     <a class="nav-link text-white" data-toggle="tab" role="tab" href="#global_qc" aria-controls="global_qc" aria-selected="false">Global QC</a>
                 </li>
             </ul>
@@ -227,6 +227,7 @@ const build_table = () => {
             paging: true,
             pagingType: "simple",
             info: true,
+            bSortClasses: false,
         })
 
         // track if we actually have a table rendered
@@ -306,6 +307,12 @@ const build_inferred_sex_plot = () => {
 }
 
 const build_global_qc = () => {
+
+    if (!("depth" in data)) {
+        return
+    }
+
+    $("#global_qc_nav").prop('hidden', false)
 
     // inferred sex
     build_inferred_sex_plot()
