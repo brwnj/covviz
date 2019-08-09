@@ -34,7 +34,17 @@ for samples test_sample1, test_sample2, and test_sample3, this would look like:
 Then CLI usage is:
 
 ```
-covviz --ped $ped --roc $roc $bed
+covviz --ped $ped $bed $roc
+```
+
+### Custom Metadata (.ped)
+
+There is support for non-indexcov .ped files, though you may have to change
+the default column IDs pertaining to the column which contains the sample ID
+and the sex of the sample.
+
+```
+covviz --ped $ped --sample-col sample_col --sex sex_col $bed $roc
 ```
 
 # The Nextflow Workflow
