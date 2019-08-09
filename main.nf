@@ -7,6 +7,7 @@ params.fai = false
 if( !params.fai ) { exit 1, "--fai is not defined" }
 params.gff = false
 if (!params.gff ) { exit 1, "--gff is not defined" }
+params.ped = false
 
 project = params.project ?: 'NF'
 
@@ -41,6 +42,10 @@ log.info("\n")
 fai = file(params.fai)
 gff = file(params.gff)
 outdir = file(params.outdir)
+custom_ped = false
+if (params.ped) {
+    custom_ped = file(params.ped)
+}
 
 // check file existence
 if( !fai.exists() ) { exit 1, "Reference FASTA [${fai}] index does not exist." }
@@ -62,9 +67,9 @@ process run_indexcov {
     output:
     file("${project}*.png")
     file("*.html")
-    file("${project}*.bed.gz") into coverage_bed
-    file("${project}*.ped") into ped
-    file("${project}*.roc") into roc
+    file("${project}*.bed.gz") into bed_ch
+    file("${project}*.ped") into ped_ch
+    file("${project}*.roc") into roc_ch
 
     script:
     excludepatt = params.exclude ? "--excludepatt \"${params.exclude}\"" : ''
@@ -74,15 +79,31 @@ process run_indexcov {
     """
 }
 
+// account for optional, custom ped and the need to merge that with indexcov output
+(merge_ch, report_ch) = (params.ped ? [ped_ch, Channel.empty()]: [Channel.empty(), ped_ch])
+
+process merge_peds {
+    input:
+    file ped from merge_ch
+    file custom_ped
+
+    output:
+    file 'merged.ped' into merged_ch
+
+    script:
+    template 'merge_peds.py'
+}
+
 process build_report {
     publishDir path: "$outdir", mode: "copy", pattern: "*.html", overwrite: true
-    container 'brwnj/covviz:v1.0.4'
+    container 'brwnj/covviz:v1.0.5'
 
     input:
-    file pedfile from ped
-    file rocfile from roc
-    file bedfile from coverage_bed
+    file ped from report_ch.mix(merged_ch).collect()
+    file roc from roc_ch
+    file bed from bed_ch
     file gff
+    file custom_ped
 
     output:
     file("covviz_report.html")
@@ -91,6 +112,6 @@ process build_report {
     """
     covviz --min-samples ${params.minsamples} --sex-chroms ${params.sexchroms} --exclude '${params.exclude}' \
         --z-threshold ${params.zthreshold} --distance-threshold ${params.distancethreshold} \
-        --slop ${params.slop} --ped ${pedfile} --gff ${gff} --roc ${rocfile} ${bedfile}
+        --slop ${params.slop} --ped ${ped} --gff ${gff} ${bed} ${roc}
     """
 }

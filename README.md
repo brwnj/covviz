@@ -117,6 +117,12 @@ Which gives us `./results/covviz_report.html`.
 + `--project`
     + can be used to name your indexcov to something more meaningful
     + default: "NF"
++ `--ped`
+    + custom metadata that will be merged with the .ped output of indexcov
+    + default: false
++ `--samplecol`
+    + the column header for sample IDs in your custom ped file
+    + default: "sample_id"
 
 
 # Report
