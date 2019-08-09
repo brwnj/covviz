@@ -141,11 +141,17 @@ def parse_sex_groups(filename, sample_col, sex_col):
                     "sample column [%s] was not found in the header of %s"
                     % (sample_col, filename)
                 )
+                logger.warning(
+                    "this will likely result in strange plotting behavior on sex chromosomes."
+                )
                 break
             if sex_col not in row:
                 logger.warning(
                     "sex column [%s] was not found in the header of %s"
                     % (sex_col, filename)
+                )
+                logger.warning(
+                    "this will likely result in strange plotting behavior on sex chromosomes."
                 )
                 break
             groups[row[sex_col]].append(row[sample_col])
