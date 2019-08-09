@@ -83,6 +83,8 @@ process run_indexcov {
 (merge_ch, report_ch) = (params.ped ? [ped_ch, Channel.empty()]: [Channel.empty(), ped_ch])
 
 process merge_peds {
+    container 'brwnj/covviz:v1.0.5'
+
     input:
     file ped from merge_ch
     file custom_ped
