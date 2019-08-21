@@ -56,9 +56,7 @@ Channel
 
 process run_indexcov {
     publishDir path: "$outdir/indexcov", mode: "copy"
-    container 'brentp/smoove:v0.2.3'
-    memory 8.GB
-    cache 'deep'
+    label 'indexcov'
 
     input:
     file idx from index_ch.collect()
@@ -83,8 +81,6 @@ process run_indexcov {
 (merge_ch, report_ch) = (params.ped ? [ped_ch, Channel.empty()]: [Channel.empty(), ped_ch])
 
 process merge_peds {
-    container 'brwnj/covviz:v1.0.5'
-
     input:
     file ped from merge_ch
     file custom_ped
@@ -98,14 +94,12 @@ process merge_peds {
 
 process build_report {
     publishDir path: "$outdir", mode: "copy", pattern: "*.html", overwrite: true
-    container 'brwnj/covviz:v1.0.5'
 
     input:
     file ped from report_ch.mix(merged_ch).collect()
     file roc from roc_ch
     file bed from bed_ch
     file gff
-    file custom_ped
 
     output:
     file("covviz_report.html")
