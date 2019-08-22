@@ -16,10 +16,8 @@ points.
 
 # The Python Package
 
-`covviz` is installable via `pip install -U covviz`. It's currently quite
-dependent upon `indexcov` output, but we're working to make this more
-generalized -- to accept any bed input, normalize the coverage, and calculate
-the ROC curves.
+`covviz` is installable via `pip install -U covviz` and analyzes a bed3+
+output format.
 
 ## Usage
 
@@ -34,7 +32,7 @@ for samples test_sample1, test_sample2, and test_sample3, this would look like:
 Then CLI usage is:
 
 ```
-covviz --ped $ped $bed $roc
+covviz $bed
 ```
 
 ### Custom Metadata (.ped)
@@ -44,7 +42,7 @@ the default column IDs pertaining to the column which contains the sample ID
 and the sex of the sample.
 
 ```
-covviz --ped $ped --sample-col sample_col --sex sex_col $bed $roc
+covviz --ped $ped --sample-col sample_col --sex sex_col $bed
 ```
 
 # The Nextflow Workflow
@@ -114,9 +112,6 @@ Which gives us `./results/covviz_report.html`.
 + `--slop`
     + leading and trailing segments added to significant regions to make them more visible
     + default: 500000
-+ `--project`
-    + can be used to name your indexcov to something more meaningful
-    + default: "NF"
 + `--ped`
     + custom metadata that will be merged with the .ped output of indexcov
     + default: false
