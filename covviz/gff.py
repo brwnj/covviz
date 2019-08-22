@@ -31,7 +31,7 @@ def merge_intervals(intervals):
     return merged
 
 
-def parse_gff(path, traces):
+def parse_gff(path, traces, exclude):
     """
     Grabs the gene name from the attrs field where 'Name=<symbol>;' is present.
 
@@ -46,7 +46,8 @@ def parse_gff(path, traces):
         for chr, entries in groupby(
             cleaned, key=lambda i: i.partition("\t")[0].strip("chr")
         ):
-            if not chr in include:
+            # apply exclusions
+            if exclude.findall(chr):
                 continue
             genes = list()
             for line in entries:
@@ -57,7 +58,10 @@ def parse_gff(path, traces):
                     continue
                 start = int(toks[3])
                 end = int(toks[4])
-                name = name_re.findall(toks[8])[0]
+                try:
+                    name = name_re.findall(toks[8])[0]
+                except IndexError:
+                    name = ""
                 genes.append([int(toks[3]), int(toks[4]), [name]])
                 gene_search.append(dict(n=name, v=[chr, start, end]))
             if genes:
