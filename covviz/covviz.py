@@ -3,6 +3,7 @@ import csv
 import json
 import logging
 import os
+import re
 from collections import defaultdict
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -29,10 +30,6 @@ def parse_args():
             "after chrom, start, and end."
         ),
     )
-
-    # TODO calculate from bed
-    p.add_argument("roc", help="indexcov .roc output")
-
     p.add_argument(
         "-e",
         "--exclude",
@@ -93,6 +90,14 @@ def parse_args():
         "-o", "--output", default="covviz_report.html", help="output file path"
     )
     p.add_argument(
+        "--skip-norm",
+        action="store_true",
+        help=(
+            "skip normalization by global sample median if the depths "
+            "in your .bed are already normalized"
+        ),
+    )
+    p.add_argument(
         "--min-samples",
         default=8,
         type=int,
@@ -118,42 +123,6 @@ def parse_args():
     return p.parse_args()
 
 
-# TODO calculate this based on the bed
-def parse_roc(path, traces, samples):
-    chroms = list(traces.keys())
-    chroms.pop(chroms.index("chromosomes"))
-
-    traces["roc"] = dict()
-    data = defaultdict(lambda: defaultdict(list))
-
-    with gzopen(path) as fh:
-        reader = csv.DictReader(fh, delimiter="\t")
-        for row in reader:
-            # header row is repeated at chromosome breaks
-            if row["#chrom"] == "#chrom":
-                continue
-            chr = row["#chrom"].strip("chr")
-            if chr not in traces.keys():
-                continue
-            data[chr]["x"].append(row["cov"])
-            for sample in samples:
-                data[chr][sample].append(row[sample])
-
-    for chr in chroms:
-        traces["roc"][chr] = list()
-        for sample in samples:
-            trace = dict(
-                x=data[chr]["x"],
-                y=data[chr][sample][1:],
-                hoverinfo="text",
-                mode="lines",
-                text=sample,
-                marker={"color": "rgba(108,117,125,0.2)"},
-            )
-            traces["roc"][chr].append(trace)
-    return traces
-
-
 def compress_data(data):
     json_str = json.dumps(data).encode("utf-8", "ignore").decode("utf-8")
     json_str = json_str.replace("NaN", "null")
@@ -168,12 +137,13 @@ def cli():
         autoescape=select_autoescape(["html"]),
     )
 
-    exclude = args.exclude.replace("~", "").replace(",", "|")
-
     logger.info("parsing bed file (%s)" % args.bed)
+
+    exclude = re.compile(args.exclude.replace("~", "").replace(",", "|"))
+
     traces, samples = parse_bed(
         args.bed,
-        args.exclude,
+        exclude,
         args.ped,
         args.sample_col,
         args.sex_col,
@@ -182,19 +152,18 @@ def cli():
         args.distance_threshold,
         args.slop,
         args.min_samples,
+        args.skip_norm,
     )
 
     logger.info("parsing gff file (%s)" % args.gff)
-    traces = parse_gff(args.gff, traces)
-
-    logger.info("parsing roc file (%s)" % args.roc)
-    traces = parse_roc(args.roc, traces, samples)
+    traces = parse_gff(args.gff, traces, exclude)
 
     if args.ped:
         logger.info("parsing ped file (%s)" % args.ped)
         traces = parse_ped(args.ped, traces, args.sample_col, args.sex_chroms)
 
     with open(args.output, "w") as fh:
+        logger.info("preparing output")
         compressed_json_data = compress_data(traces)
         html_template = env.get_template("covviz.html")
         print(html_template.render(data=compressed_json_data), file=fh)
