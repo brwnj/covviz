@@ -108,6 +108,6 @@ process build_report {
     """
     covviz --min-samples ${params.minsamples} --sex-chroms ${params.sexchroms} --exclude '${params.exclude}' \
         --z-threshold ${params.zthreshold} --distance-threshold ${params.distancethreshold} \
-        --slop ${params.slop} --ped ${ped} --gff ${gff} ${bed} ${roc}
+        --slop ${params.slop} --ped ${ped} --gff ${gff} --skip-norm ${bed}
     """
 }
