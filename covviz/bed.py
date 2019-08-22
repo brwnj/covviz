@@ -1,10 +1,12 @@
 import csv
 import logging
+import os
 import re
 from collections import defaultdict
 from itertools import groupby
 
 import numpy as np
+import pandas as pd
 
 from .utils import gzopen
 
@@ -158,6 +160,24 @@ def parse_sex_groups(filename, sample_col, sex_col):
     return groups
 
 
+def normalize_depths(path):
+    filename, ext = os.path.splitext(path)
+    if ext == ".gz":
+        filename, ext = os.path.splitext(filename)
+
+    output_bed = filename + ".norm.bed.gz"
+    df = pd.read_csv(path, sep="\t", low_memory=False)
+    # omit 0s from median calculation
+    df[df.iloc[:, 3:] == 0] = np.nan
+    # median values per sample
+    global_sample_median = np.nanmedian(df.iloc[:, 3:], axis=0)
+    # normalize each sample
+    df.iloc[:, 3:] = df.iloc[:, 3:] / global_sample_median
+    # generate output file
+    df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0., index=False)
+    return output_bed
+
+
 def identify_outliers(a, threshold=3.5):
     med = np.median(a)
     mad = np.median([np.abs(i - med) for i in a])
@@ -172,6 +192,43 @@ def identify_outliers(a, threshold=3.5):
     return np.where(np.abs(modified_z_scores) > threshold)
 
 
+def add_roc_traces(path, traces, exclude):
+    traces["roc"] = dict()
+    df = pd.read_csv(path, sep="\t", low_memory=False)
+    n_bins = 150
+    x_max = 2.5
+    x = list(np.linspace(0, x_max, n_bins))
+
+    for chrom, data in df.groupby(df.columns[0]):
+        chrom = str(chrom)
+        # apply exclusions
+        if exclude.findall(chrom):
+            continue
+
+        # pre-normalized data
+        arr = np.asarray(data.iloc[:, 3:])
+        traces["roc"][chrom] = list()
+
+        for i in range(0, arr.shape[1]):
+            # get counts across our x-range of bins
+            counts, _ = np.histogram(arr[:, i], bins=n_bins, range=(0, x_max))
+            # decreasing order of the cumulative sum across the bins
+            sums = counts[::-1].cumsum()[::-1]
+            # normalize to y_max to 1
+            sums = list(sums.astype(float) / max(1, sums[0]))
+
+            trace = dict(
+                x=x,
+                y=sums,
+                hoverinfo="text",
+                mode="lines",
+                text=df.columns[i + 3],
+                marker={"color": "rgba(108,117,125,0.2)"},
+            )
+            traces["roc"][chrom].append(trace)
+    return traces
+
+
 def parse_bed(
     path,
     exclude,
@@ -182,7 +239,8 @@ def parse_bed(
     z_threshold=3.5,
     distance_threshold=150000,
     slop=500000,
-    min_samples=6,
+    min_samples=8,
+    skip_norm=False,
 ):
     bed_traces = dict()
     exclusions = re.compile(exclude)
@@ -207,13 +265,16 @@ def parse_bed(
     if ped:
         groups = parse_sex_groups(ped, sample_col, sex_col)
 
+    if not skip_norm:
+        path = normalize_depths(path)
+
     with gzopen(path) as fh:
         header = fh.readline().strip().split("\t")
         fh.seek(0)
         reader = csv.DictReader(fh, delimiter="\t")
         for chr, entries in groupby(reader, key=lambda i: i[header[0]]):
             # apply exclusions
-            if exclusions.findall(chr):
+            if exclude.findall(chr):
                 continue
 
             data = defaultdict(list)
@@ -341,4 +402,8 @@ def parse_bed(
 
     bed_traces["chromosomes"] = chroms
     bed_traces["sex_chroms"] = sex_chroms
+
+    # pass the bed or normed bed
+    add_roc_traces(path, bed_traces, exclude)
+
     return bed_traces, samples
