@@ -155,8 +155,9 @@ def cli():
         args.skip_norm,
     )
 
-    logger.info("parsing gff file (%s)" % args.gff)
-    traces = parse_gff(args.gff, traces, exclude)
+    if args.gff:
+        logger.info("parsing gff file (%s)" % args.gff)
+        traces = parse_gff(args.gff, traces, exclude)
 
     if args.ped:
         logger.info("parsing ped file (%s)" % args.ped)
