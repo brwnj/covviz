@@ -6,7 +6,6 @@ if( !params.indexes ) { exit 1, "--indexes is not defined" }
 params.fai = false
 if( !params.fai ) { exit 1, "--fai is not defined" }
 params.gff = false
-if (!params.gff ) { exit 1, "--gff is not defined" }
 params.ped = false
 
 project = params.project ?: 'NF'
@@ -25,7 +24,9 @@ log.info("====================================================================")
 log.info("\n")
 log.info("Alignment indexes            --indexes          : ${params.indexes}")
 log.info("Reference index              --fai              : ${params.fai}")
+if (params.gff) {
 log.info("GFF                          --gff              : ${params.gff}")
+}
 log.info("Sex chromosomes              --sexchroms        : ${params.sexchroms}")
 log.info("Excluded chroms              --exclude          : ${params.exclude}")
 log.info("Z threshold                  --zthreshold       : ${params.zthreshold}")
@@ -40,7 +41,6 @@ log.info("\n")
 
 // instantiate files
 fai = file(params.fai)
-gff = file(params.gff)
 outdir = file(params.outdir)
 custom_ped = false
 if (params.ped) {
@@ -53,6 +53,10 @@ if( !fai.exists() ) { exit 1, "Reference FASTA [${fai}] index does not exist." }
 Channel
     .fromPath(params.indexes, checkIfExists: true)
     .set { index_ch }
+
+Channel
+    .from(params.gff ? file(params.gff) : false)
+    .set { gff_ch }
 
 process run_indexcov {
     publishDir path: "$outdir/indexcov", mode: "copy"
@@ -99,15 +103,16 @@ process build_report {
     file ped from report_ch.mix(merged_ch).collect()
     file roc from roc_ch
     file bed from bed_ch
-    file gff
+    file gff from gff_ch
 
     output:
     file("covviz_report.html")
 
     script:
+    gff_opt = params.gff ? "--gff ${gff}" : ""
     """
     covviz --min-samples ${params.minsamples} --sex-chroms ${params.sexchroms} --exclude '${params.exclude}' \
         --z-threshold ${params.zthreshold} --distance-threshold ${params.distancethreshold} \
-        --slop ${params.slop} --ped ${ped} --gff ${gff} --skip-norm ${bed}
+        --slop ${params.slop} --ped ${ped} ${gff_opt} --skip-norm ${bed}
     """
 }
