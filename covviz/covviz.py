@@ -33,7 +33,7 @@ def parse_args():
     p.add_argument(
         "-e",
         "--exclude",
-        default="^GL|^hs|^chrEBV$|M$|MT$|^NC|_random$|Un_|^HLA\-|_alt$|hap\d+$",
+        default="^HLA,^hs,:,^GL,M,EBV,^NC,^phix,decoy,random$,Un,hap,_alt$",
         help="chromosome regex to exclude from analysis",
     )
     p.add_argument(
