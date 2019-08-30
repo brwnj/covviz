@@ -8,7 +8,12 @@ from itertools import groupby
 import numpy as np
 import pandas as pd
 
-from .utils import gzopen
+from .utils import gzopen, merge_intervals
+
+try:
+    from itertools import ifilterfalse as filterfalse
+except ImportError:
+    from itertools import filterfalse
 
 logger = logging.getLogger("covviz")
 
@@ -174,7 +179,7 @@ def normalize_depths(path):
     # normalize each sample
     df.iloc[:, 3:] = df.iloc[:, 3:] / global_sample_median
     # generate output file
-    df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0., index=False)
+    df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0.0, index=False)
     return output_bed
 
 
@@ -409,3 +414,73 @@ def parse_bed(
     add_roc_traces(path, bed_traces, exclude)
 
     return bed_traces, samples
+
+
+def parse_bed_track(path, traces, exclude, y_offset=-0.15, track_color="#444"):
+    """
+    parse a bed file, placing lines per region
+    """
+    trace_name = os.path.basename(path)
+
+    with gzopen(path) as fh:
+        cleaned = filterfalse(lambda i: i[0] == "#", fh)
+
+        for chrom, entries in groupby(
+            cleaned, key=lambda i: i.partition("\t")[0].lstrip("chr")
+        ):
+            # apply exclusions
+            if exclude.findall(chrom):
+                continue
+            if chrom not in traces:
+                continue
+            regions = list()
+            for line in entries:
+                if line.startswith("#"):
+                    continue
+                toks = line.strip().split("\t")
+                # not currently converting 0- and 1-based
+                start = int(toks[1])
+                end = int(toks[2])
+                try:
+                    name = toks[3]
+                except IndexError:
+                    name = ""
+                regions.append([start, end, [name]])
+            if regions:
+                merged_regions = merge_intervals(regions)
+                # update list to semi-colon delimited string
+                for interval in merged_regions:
+                    interval[2] = ";".join(set(interval[2]))
+                    if len(interval[2]) > 55:
+                        interval[2] = interval[2][0:55] + "..."
+
+                x_values = list()
+                y_values = list()
+                text_values = list()
+                for interval in merged_regions:
+                    # start
+                    x_values.append(interval[0])
+                    # end
+                    x_values.append(interval[1])
+                    # gap
+                    x_values.append("")
+                    y_values.append(y_offset)
+                    y_values.append(y_offset)
+                    y_values.append("")
+                    text_values.append(interval[2])
+                    text_values.append(interval[2])
+                    text_values.append("")
+                trace = dict(
+                    x=x_values,
+                    y=y_values,
+                    text=text_values,
+                    type="scattergl",
+                    name=trace_name,
+                    tracktype="bed",
+                    connectgaps=False,
+                    # hoverinfo="text",
+                    showlegend=False,
+                    line={"width": 10, "color": track_color},
+                )
+                traces[chrom].append(trace)
+    return traces
