@@ -205,6 +205,8 @@ def add_roc_traces(path, traces, exclude):
         if exclude.findall(chrom):
             continue
 
+        chrom = chrom.lstrip("chr")
+
         # pre-normalized data
         arr = np.asarray(data.iloc[:, 3:])
         traces["roc"][chrom] = list()
