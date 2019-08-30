@@ -1,7 +1,8 @@
+import os
 import re
 from itertools import groupby
 
-from .utils import gzopen
+from .utils import gzopen, merge_intervals
 
 try:
     from itertools import ifilterfalse as filterfalse
@@ -9,60 +10,49 @@ except ImportError:
     from itertools import filterfalse
 
 
-def merge_intervals(intervals):
-    sorted_intervals = sorted(intervals, key=lambda i: i[0])
-    merged = list()
-    for higher in sorted_intervals:
-        if not merged:
-            merged.append(higher)
-        else:
-            lower = merged[-1]
-            # merge bookends
-            if higher[0] - lower[1] == 1:
-                # update existing entry
-                merged[-1] = [lower[0], higher[1], lower[2] + higher[2]]
-            elif higher[0] <= lower[1]:
-                upper_bound = max(lower[1], higher[1])
-                # update existing entry
-                merged[-1] = [lower[0], upper_bound, lower[2] + higher[2]]
-            # non-overlapping
-            else:
-                merged.append(higher)
-    return merged
-
-
-def parse_gff(path, traces, exclude):
+def parse_gff(
+    path,
+    traces,
+    exclude,
+    ftype="gene",
+    regex="Name=",
+    y_offset=-0.15,
+    track_color="#444",
+):
     """
     Grabs the gene name from the attrs field where 'Name=<symbol>;' is present.
 
     returns:
         dict of lists
     """
-    include = traces.keys()
+    trace_name = os.path.basename(path)
     gene_search = list()
     with gzopen(path) as fh:
         cleaned = filterfalse(lambda i: i[0] == "#", fh)
-        name_re = re.compile(r"Name=([^;]*)")
+        name_re = re.compile(r"%s([^;]*)" % regex)
         for chr, entries in groupby(
-            cleaned, key=lambda i: i.partition("\t")[0].strip("chr")
+            cleaned, key=lambda i: i.partition("\t")[0].lstrip("chr")
         ):
             # apply exclusions
             if exclude.findall(chr):
+                continue
+            if chr not in traces:
                 continue
             genes = list()
             for line in entries:
                 if line.startswith("#"):
                     continue
                 toks = line.strip().split("\t")
-                if toks[2] != "gene":
+                if toks[2] != ftype:
                     continue
+                # not currently converting 0- and 1-based
                 start = int(toks[3])
                 end = int(toks[4])
                 try:
                     name = name_re.findall(toks[8])[0]
                 except IndexError:
                     name = ""
-                genes.append([int(toks[3]), int(toks[4]), [name]])
+                genes.append([start, end, [name]])
                 gene_search.append(dict(n=name, v=[chr, start, end]))
             if genes:
                 # merge overlapping genes
@@ -71,7 +61,6 @@ def parse_gff(path, traces, exclude):
                 for interval in merged_genes:
                     interval[2] = ";".join(set(interval[2]))
                 # make the trace structure for the gene annotation track
-                y_offset = -0.25
                 x_values = list()
                 y_values = list()
                 text_values = list()
@@ -93,11 +82,12 @@ def parse_gff(path, traces, exclude):
                     y=y_values,
                     text=text_values,
                     type="scattergl",
-                    name="genes",
+                    name=trace_name,
+                    tracktype="gff",
                     connectgaps=False,
-                    hoverinfo="text",
+                    # hoverinfo="text",
                     showlegend=False,
-                    line={"width": 10, "color": "#444"},
+                    line={"width": 10, "color": track_color},
                 )
                 traces[chr].append(gene_trace)
     traces["genes"] = gene_search
