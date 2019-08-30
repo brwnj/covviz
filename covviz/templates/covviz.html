@@ -406,17 +406,23 @@ const reset_datatable = () => {
 }
 
 const handle_plot_click = (click_data) => {
-    if (click_data.points[0].data.name == 'genes') {
+    if (click_data.points[0].data.tracktype == 'gff') {
         let genes = click_data.points[0].text.split(";")
         for (var i = 0; i < genes.length; i++) {
             window.open("https://www.genecards.org/cgi-bin/carddisp.pl?gene=" + genes[i], "_blank")
         }
+    } else if (click_data.points[0].data.tracktype == 'vcf') {
+        // nothing yet
+        return
+    } else if (click_data.points[0].data.tracktype == 'bed') {
+        // nothing yet
+        return
     } else {
         let sample_id = click_data.points[0].data.text
         if (sample_id) {
             highlight_plot_traces(sample_id)
             if (ped) {
-    search_datatable(sample_id)
+                search_datatable(sample_id)
             }
         }
     }
