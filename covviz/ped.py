@@ -17,15 +17,30 @@ def check_ped_header(header, cols):
     return is_indexcov
 
 
-def parse_ped(path, traces, sample_col, sex_chroms):
+def parse_ped(path, traces, sample_col, sex_chroms, sex_vals="1,2"):
     table_data = list()
     ped_data = dict(
         inferred=defaultdict(list), bins=defaultdict(list), pca=defaultdict(list)
     )
     sex_chroms = [i.strip() for i in sex_chroms.split(",")]
 
+    male = None
+    female = None
+    for i, v in enumerate(sex_vals.split(",")):
+        if i == 0:
+            male = v
+        elif i == 1:
+            female = v
+        else:
+            break
+
     # indexcov .ped format
-    required_vals = [sample_col, "bins.in", "bins.out", "bins.lo"]  # CNX, CNY or CNchrX, CNchrY
+    required_vals = [
+        sample_col,
+        "bins.in",
+        "bins.out",
+        "bins.lo",
+    ]  # CNX, CNY or CNchrX, CNchrY
     float_vals = ["slope", "p.out", "PC1", "PC2", "PC3", "PC4", "PC5"]
     int_vals = ["bins.out", "bins.lo", "bins.hi", "bins.in"]
 
@@ -65,16 +80,21 @@ def parse_ped(path, traces, sample_col, sex_chroms):
                     ped_data["inferred"]["y"].append(0)
 
                 # male
-                if row["sex"] == 1:
+                if row["sex"] == male:
                     ped_data["inferred"]["color"].append("rgba(12,44,132,0.5)")
                     ped_data["inferred"]["hover"].append(
                         "Sample: %s<br>Inferred X CN: 1" % (row[sample_col],)
                     )
                 # female
-                else:
+                elif row["sex"] == female:
                     ped_data["inferred"]["color"].append("rgba(227,26,28,0.5)")
                     ped_data["inferred"]["hover"].append(
                         "Sample: %s<br>Inferred X CN: 2" % (row[sample_col],)
+                    )
+                else:
+                    ped_data["inferred"]["color"].append("rgba(105,105,105,0.5)")
+                    ped_data["inferred"]["hover"].append(
+                        "Sample: %s<br>Unknown" % (row[sample_col],)
                     )
 
                 # bin plot
