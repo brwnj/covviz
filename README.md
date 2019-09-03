@@ -5,9 +5,9 @@ Coverage visualization; a many-sample coverage browser.
 The aim of `covviz` is to highlight regions of significant
 (passing the user's z-score threshold) and sustained (beyond user specified
 distance) deviation from the majority of samples. Significance is determined
-using z-scores for all samples at all points using median absolute deviation,
-but in order to be highlighted, points must be significant consecutively
-throughout a user specified distance.
+using z-scores for all samples at all points using median absolute deviation.
+In order for regions to be highlighted, points must be significant
+consecutively throughout a user specified distance.
 
 If you are analyzing a low number of samples, deviation may be irrelevant. In
 this case, we can set `--min-samples` to be greater than our sample total
@@ -26,7 +26,7 @@ header with sample IDs. The first three column headers are agnostic, but
 for samples test_sample1, test_sample2, and test_sample3, this would look like:
 
 ```
-#chrom   start   end   test_sample1   test_sample2   test_sample3
+#chrom   start   end   sample1   sample2   sample3
 ```
 
 Then CLI usage is:
@@ -44,6 +44,28 @@ and the sex of the sample.
 ```
 covviz --ped $ped --sample-col sample_col --sex sex_col $bed
 ```
+
+### Annotation Tracks
+
+![significant_regions](data/img/covviz_tracks.gif)
+
+Currently we support GFF, VCF, and BED. GFF tracks are added using `--gff`
+where features are 'gene' and attributes have 'Name='. Feature type and
+attribute regex can be configured using `--gff-feature` and `--gff-attr`.
+
+VCF tracks (v4.1) are added with `--vcf` with the entire INFO string
+being displayed by default. Specifying `--vcf-info` with something like
+'CLNDN=' will grab just that field when using ClinVar variants. Including
+large INFO strings for all variants can dramatically increase the size
+of the covviz report.
+
+Region based annotation tracks can be added using `--bed`. The name field
+will be used to identify the regions when present.
+
+Annotation tracks, `--gff`, `--vcf`, and `--bed`, may be specified
+multiple times.
+
+In all cases, 'chr' will be stripped from the chromosome names.
 
 # The Nextflow Workflow
 
