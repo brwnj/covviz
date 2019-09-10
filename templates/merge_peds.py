@@ -7,8 +7,17 @@ custom_ped_file = "$custom_ped"
 standard_ped_file = "$ped"
 output_file = "merged.ped"
 sample_col = "$params.samplecol"
-omit_from_indexcov = ["#family_id", "paternal_id", "maternal_id", "phenotype", "p.out", "PC4", "PC5"]
+omit_from_indexcov = [
+    "#family_id",
+    "paternal_id",
+    "maternal_id",
+    "phenotype",
+    "p.out",
+    "PC4",
+    "PC5",
+]
 sep = "\\t"
+
 
 def gzopen(f):
     if f.endswith(".gz"):
@@ -32,7 +41,9 @@ with gzopen(custom_ped_file) as fh:
         try:
             custom_data[row[sample_col]] = row
         except KeyError:
-            logging.critical(" you may need to change `--samplecol` to reflect your sample ID column")
+            logging.critical(
+                "you may need to change `--samplecol` to reflect your sample ID column"
+            )
             raise
 
 with gzopen(standard_ped_file) as fh:
@@ -46,7 +57,10 @@ with gzopen(standard_ped_file) as fh:
         merged_row = []
 
         if row[indexcov_sample_col] not in custom_data:
-            logging.warning("sample %s was not present in %s" % (row[indexcov_sample_col], custom_ped_file))
+            logging.warning(
+                "sample %s was not present in %s"
+                % (row[indexcov_sample_col], custom_ped_file)
+            )
             # output will need to be padded on the left
             for col in merged_header:
                 try:

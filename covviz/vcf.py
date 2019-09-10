@@ -1,6 +1,5 @@
 import os
 import re
-
 from itertools import groupby
 
 from .utils import gzopen
