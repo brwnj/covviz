@@ -64,7 +64,12 @@ def parse_vcf(path, traces, exclude, regex=None, y_offset=-0.15, track_color="#4
                 type="scattergl",
                 name=trace_name,
                 text=trace_text,
-                marker=dict(size=10, symbol="square", color=track_color),
+                marker=dict(
+                    size=10,
+                    symbol="square",
+                    color=track_color,
+                    line=dict(width=1, color="white"),
+                ),
                 tracktype="vcf",
             )
             traces[chrom].append(trace)
