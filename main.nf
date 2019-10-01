@@ -1,5 +1,47 @@
 #!/usr/bin/env nextflow
 
+params.help = false
+if (params.help) {
+    log.info """
+    -----------------------------------------------------------------------
+
+    Required arguments
+
+    --indexes              quoted file path with wildcard ('*.crai') to 
+                           cram or bam indexes
+    --fai                  file path to .fai reference index
+    --gff                  file path to gff matching genome build of 
+                           `--indexes`
+
+    Workflow Options
+
+    --outdir               output directory for results
+                           default: "./results"
+    --sexchroms            sex chromosomes as they are in `--indexes`
+                           default: "X,Y"
+    --exclude              regular expression of chromosomes to skip
+                           default: "^GL|^hs|^chrEBV\$|M\$|MT\$|^NC|_random$|Un_|^HLA\\-|_alt\$|hap\\d+\$"
+    --zthreshold           a sample must greater than this many standard 
+                           deviations in order to be found significant
+                           default: 3.5
+    --distancethreshold    consecutive significant points must span this 
+                           distance in order to pass this filter
+                           default: 150000
+    --slop                 leading and trailing segments added to 
+                           significant regions to make them more visible
+                           default: 500000
+    --ped                  custom metadata that will be merged with the 
+                           .ped output of indexcov
+                           default: false
+    --samplecol            the column header for sample IDs in your custom 
+                           ped file
+                           default: "sample_id"
+
+    -----------------------------------------------------------------------
+    """.stripIndent()
+    exit 0
+}
+
 // required arguments
 params.indexes = false
 if( !params.indexes ) { exit 1, "--indexes is not defined" }
