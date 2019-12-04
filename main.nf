@@ -10,13 +10,14 @@ if (params.help) {
     --indexes              quoted file path with wildcard ('*.crai') to
                            cram or bam indexes
     --fai                  file path to .fai reference index
-    --gff                  file path to gff matching genome build of
-                           `--indexes`
+
 
     Workflow Options
 
     --outdir               output directory for results
                            default: "./results"
+    --gff                  file path to gff matching genome build of
+                           `--indexes`
     --sexchroms            sex chromosomes as they are in `--indexes`
                            default: "X,Y"
     --exclude              regular expression of chromosomes to skip
