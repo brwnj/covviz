@@ -367,6 +367,7 @@ const build_global_qc = () => {
 $('#chrom_selector').on("change", () => {
     // $('#tab_names a[href="#scaled"]').tab('show')
     let chr = $('#chrom_selector input:radio:checked').data('name')
+    let sample_id
     if ("genes" in data) {
         gene_search_obj.clear()
     }
@@ -377,10 +378,17 @@ $('#chrom_selector').on("change", () => {
         // remove all filters and reset table
         // table.search('').columns().search('').draw()
         // de-select all rows
-        table.$('tr.selected').removeClass('selected')
+        // table.$('tr.selected').removeClass('selected')
+        table_data = table.rows('.selected').data()
+        if (table_data.length == 1) {
+            sample_id = table_data[0][sample_column]
+        }
     }
     build_cov(chr)
     build_scaled(chr)
+    if (sample_id) {
+        highlight_plot_traces(sample_id)
+    }
 })
 
 const search_datatable = (sample_id) => {
