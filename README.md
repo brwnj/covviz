@@ -4,7 +4,7 @@ Coverage visualization; a many-sample coverage browser.
 
 The aim of `covviz` is to highlight regions of significant
 (passing the user's z-score threshold) and sustained (beyond user specified
-distance) deviation from the majority of samples. Significance is determined
+distance) deviation of coverage depth from the majority of samples. Significance is determined
 using z-scores for all samples at all points using median absolute deviation.
 In order for regions to be highlighted, points must be significant
 consecutively throughout a user specified distance.
@@ -14,60 +14,18 @@ this case, we can set `--min-samples` to be greater than our sample total
 to skip Z-threshold calculation and plot coverages for all samples at all
 points.
 
-# The Python Package
+### Table of contents
 
-`covviz` is installable via `pip install -U covviz` and analyzes a bed3+
-output format.
+- [Getting started](#getting-started)
+  * [From alignment indexes (.crai)](#from-alignment-indexes--crai-)
+  * [From coverage intervals (.bed)](#from-coverage-intervals--bed-)
+- [Interpreting the output](#interpreting-the-output)
+  * [Interactive example](#interactive-example)
+- [License](#license)
 
-## Usage
+# Getting started
 
-To analyze your coverage data it needs to be in bed3+ format and include a
-header with sample IDs. The first three column headers are agnostic, but
-for samples test_sample1, test_sample2, and test_sample3, this would look like:
-
-```
-#chrom   start   end   sample1   sample2   sample3
-```
-
-Then CLI usage is:
-
-```
-covviz $bed
-```
-
-### Custom Metadata (.ped)
-
-There is support for non-indexcov .ped files, though you may have to change
-the default column IDs pertaining to the column which contains the sample ID
-and the sex of the sample.
-
-```
-covviz --ped $ped --sample-col sample_col --sex sex_col $bed
-```
-
-### Annotation Tracks
-
-![significant_regions](data/img/covviz_tracks.gif)
-
-Currently we support GFF, VCF, and BED. GFF tracks are added using `--gff`
-where features are 'gene' and attributes have 'Name='. Feature type and
-attribute regex can be configured using `--gff-feature` and `--gff-attr`.
-
-VCF tracks (v4.1) are added with `--vcf` with the entire INFO string
-being displayed by default. Specifying `--vcf-info` with something like
-'CLNDN=' will grab just that field when using ClinVar variants. Including
-large INFO strings for all variants can dramatically increase the size
-of the covviz report.
-
-Region based annotation tracks can be added using `--bed`. The name field
-will be used to identify the regions when present.
-
-Annotation tracks, `--gff`, `--vcf`, and `--bed`, may be specified
-multiple times.
-
-In all cases, 'chr' will be stripped from the chromosome names.
-
-# The Nextflow Workflow
+## From alignment indexes (.crai)
 
 If you're starting with alignment indexes, this workflow aims to simply the
 process of obtaining coverage and generating the coverage browser.
@@ -78,7 +36,7 @@ coverage-based anomalies.
 
 The output of `indexcov` is then directly input into `covviz`.
 
-## Usage
+### Installation and usage
 
 Install `nextflow`:
 
@@ -111,38 +69,89 @@ Which gives us `./results/covviz_report.html`.
     + quoted file path with wildcard ('*.crai') to cram or bam indexes
 + `--fai`
     + file path to .fai reference index
-+ `--gff`
-    + file path to gff matching genome build of `--indexes`
 
-### Workflow Options
+A complete list of arguments can be displayed using:
 
-+ `--outdir`
-    + output directory for results
-    + default: "./results"
-+ `--sexchroms`
-    + sex chromosomes as they are in `--indexes`
-    + default: "X,Y"
-+ `--exclude`
-    + regular expression of chromosomes to skip
-    + default: "^GL|^hs|^chrEBV$|M$|MT$|^NC|_random$|Un_|^HLA\\-|_alt$|hap\\d+$"
-+ `--zthreshold`
-    + a sample must greater than this many standard deviations in order to be found significant
-    + default: 3.5
-+ `--distancethreshold`
-    + consecutive significant points must span this distance in order to pass this filter
-    + default: 150000
-+ `--slop`
-    + leading and trailing segments added to significant regions to make them more visible
-    + default: 500000
-+ `--ped`
-    + custom metadata that will be merged with the .ped output of indexcov
-    + default: false
-+ `--samplecol`
-    + the column header for sample IDs in your custom ped file
-    + default: "sample_id"
+```
+nextflow run brwnj/covviz -latest --help
+```
 
+## From coverage intervals (.bed)
 
-# Report
+The `covviz` CLI accepts bed3+ as input. If you've already generated your coverage files you can start here and not the Nextflow workflow.
+
+If you would prefer to run `indexcov` yourself across your .bai or .crai files, the workflow above simply runs:
+
+```
+fai=data/g1k_v37_decoy.fa.fai
+goleft indexcov --directory myproject --fai $fai *.crai
+```
+
+This will generate the expected inputs in their anticipated formats for the `covviz` CLI.
+
+### Expected file format
+
+To analyze your coverage data it needs to be in bed3+ format and include a
+header with sample IDs. The first three column headers are agnostic, but
+for samples test_sample1, test_sample2, and test_sample3, this would look like:
+
+```
+#chrom   start   end   sample1   sample2   sample3
+```
+
+### Installation of CLI and usage
+
+To install the `covviz` Python package use:
+
+```
+pip install -U covviz
+```
+
+Then CLI usage is:
+
+```
+covviz $bed
+```
+
+A complete list of arguments can be displayed using:
+
+```
+covviz --help
+```
+
+### Adding custom metadata (.ped)
+
+There is support for non-indexcov .ped files, though you may have to change
+the default column IDs pertaining to the column which contains the sample ID
+and the sex of the sample.
+
+```
+covviz --ped $ped --sample-col sample_col --sex sex_col $bed
+```
+
+### Adding annotation tracks
+
+![significant_regions](data/img/covviz_tracks.gif)
+
+Currently we support GFF, VCF, and BED. GFF tracks are added using `--gff`
+where features are 'gene' and attributes have 'Name='. Feature type and
+attribute regex can be configured using `--gff-feature` and `--gff-attr`.
+
+VCF tracks (v4.1) are added with `--vcf` with the entire INFO string
+being displayed by default. Specifying `--vcf-info` with something like
+'CLNDN=' will grab just that field when using ClinVar variants. Including
+large INFO strings for all variants can dramatically increase the size
+of the covviz report.
+
+Region based annotation tracks can be added using `--bed`. The name field
+will be used to identify the regions when present.
+
+Annotation tracks, `--gff`, `--vcf`, and `--bed`, may be specified
+multiple times.
+
+In all cases, 'chr' will be stripped from the chromosome names.
+
+# Interpreting the output
 
 ## Interactive example
 
