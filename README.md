@@ -17,8 +17,8 @@ points.
 ### Table of contents
 
 - [Getting started](#getting-started)
-  * [From alignment indexes (.crai)](#from-alignment-indexes--crai-)
-  * [From coverage intervals (.bed)](#from-coverage-intervals--bed-)
+  * [From alignment indexes (.crai)](#from-alignment-indexes-crai)
+  * [From coverage intervals (.bed)](#from-coverage-intervals-bed)
 - [Interpreting the output](#interpreting-the-output)
   * [Interactive example](#interactive-example)
 - [License](#license)
