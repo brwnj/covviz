@@ -20,7 +20,7 @@ points.
 
 Alignments must be indexed. The input for the `covviz` workflow are the indexes
 of the alignments. For BAM, that would be .bai, and .crai for CRAM. Indexes
-can be generated using (samtools)[https://github.com/samtools/samtools] on your
+can be generated using [samtools](https://github.com/samtools/samtools) on your
 sorted alignments:
 
 ```
@@ -30,7 +30,7 @@ samtools index mybam.bam
 
 ### Installation and usage
 
-Install (Nextflow)[https://www.nextflow.io/] if you don't already have it. The only
+Install [Nextflow](https://www.nextflow.io/) if you don't already have it. The only
 dependency is Java 8 or later, then you run:
 
 ```
