@@ -14,31 +14,24 @@ this case, we can set `--min-samples` to be greater than our sample total
 to skip Z-threshold calculation and plot coverages for all samples at all
 points.
 
-### Table of contents
-
-- [Getting started](#getting-started)
-  * [From alignment indexes (.crai)](#from-alignment-indexes-crai)
-  * [From coverage intervals (.bed)](#from-coverage-intervals-bed)
-- [Interpreting the output](#interpreting-the-output)
-  * [Interactive example](#interactive-example)
-- [License](#license)
-
 # Getting started
 
-## From alignment indexes (.crai)
+## From alignments (.bam and/or .cram)
 
-If you're starting with alignment indexes, this workflow aims to simply the
-process of obtaining coverage and generating the coverage browser.
+Alignments must be indexed. The input for the `covviz` workflow are the indexes
+of the alignments. For BAM, that would be .bai, and .crai for CRAM. Indexes
+can be generated using (samtools)[https://github.com/samtools/samtools] on your
+sorted alignments:
 
-We use [indexcov](https://github.com/brentp/goleft/tree/master/indexcov)
-to quickly estimate the coverage across samples then find regions of large,
-coverage-based anomalies.
-
-The output of `indexcov` is then directly input into `covviz`.
+```
+samtools index mybam.bam
+# generates mybam.bam.bai
+```
 
 ### Installation and usage
 
-Install `nextflow`:
+Install (Nextflow)[https://www.nextflow.io/] if you don't already have it. The only
+dependency is Java 8 or later, then you run:
 
 ```
 curl -s https://get.nextflow.io | bash
@@ -46,6 +39,11 @@ curl -s https://get.nextflow.io | bash
 
 Full nextflow installation instructions are available at:
 https://www.nextflow.io/
+
+There is no need to download the covviz code prior to execution or any software dependencies
+when using a container service like Docker or Singularity.
+
+### Docker/Singularity
 
 To simplify prerequisite software installations and software version tracking,
 we strongly recommend running `covviz` using Docker or Singularity. Docker
@@ -76,11 +74,22 @@ A complete list of arguments can be displayed using:
 nextflow run brwnj/covviz -latest --help
 ```
 
+### Nextflow arguments
+
+In the example above `-latest` pulls whatever the latest `covviz` code exists on GitHub
+prior to execution and `-profile docker` sets `-with-docker` within Nextflow.
+
+Other notable options are `-resume`, which when running a workflow a second will start
+where previous runs of the workflow left off; and `-work-dir` which sets the location of
+all intermediate files generated throughout the workflow.
+
 ## From coverage intervals (.bed)
 
-The `covviz` CLI accepts bed3+ as input. If you've already generated your coverage files you can start here and not the Nextflow workflow.
+The `covviz` CLI accepts bed3+ as input. If you've already generated your coverage
+files you can start here and not the Nextflow workflow.
 
-If you would prefer to run `indexcov` yourself across your .bai or .crai files, the workflow above simply runs:
+If you would prefer to run `indexcov` yourself across your .bai or .crai files,
+the workflow above simply runs:
 
 ```
 fai=data/g1k_v37_decoy.fa.fai
