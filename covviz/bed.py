@@ -8,7 +8,7 @@ from itertools import groupby
 import numpy as np
 import pandas as pd
 
-from .utils import gzopen, merge_intervals
+from .utils import COLORS, gzopen, merge_intervals
 
 try:
     from itertools import ifilterfalse as filterfalse
@@ -254,18 +254,8 @@ def parse_bed(
     # chromosomes, in order of appearance
     chroms = list()
     samples = list()
-    plotly_colors = [
-        "#1f77b4",  # muted blue
-        "#ff7f0e",  # safety orange
-        "#2ca02c",  # cooked asparagus green
-        "#d62728",  # brick red
-        "#9467bd",  # muted purple
-        "#8c564b",  # chestnut brown
-        "#e377c2",  # raspberry yogurt pink
-        "#7f7f7f",  # middle gray
-        "#bcbd22",  # curry yellow-green
-        "#17becf",  # blue-teal
-    ]
+    sample_trace_color = dict()
+
     sex_chroms = [i.strip("chr") for i in sex_chroms.split(",")]
 
     groups = None
@@ -298,6 +288,9 @@ def parse_bed(
             for x_index, row in enumerate(entries):
                 if not samples:
                     samples = [i for i in sorted(row.keys()) if i not in header[:3]]
+                    # plot outlier traces across chromosomes with the same color for a given sample
+                    for sample_index, sample in enumerate(samples):
+                        sample_trace_color[sample] = COLORS[sample_index % len(COLORS)]
                     if groups:
                         valid = validate_samples(samples, groups)
                         if not valid:
@@ -384,7 +377,8 @@ def parse_bed(
                         trace["fillcolor"] = fill_color
                     json_output.append(trace)
             # add the sample traces for the outlier plots atop area traces
-            for trace_index, (sample, trace_data) in enumerate(traces.items()):
+            len_traces = 0
+            for sample, trace_data in traces.items():
                 trace = dict(
                     x=trace_data["x"],
                     y=trace_data["y"],
@@ -394,18 +388,14 @@ def parse_bed(
                     mode="lines",
                     name="significant",
                     # include color as primary colors occupied by area traces
-                    marker={
-                        "width": 1,
-                        "color": plotly_colors[trace_index % len(plotly_colors)],
-                    },
+                    marker={"width": 1, "color": sample_trace_color[sample]},
                 )
+                if trace_data["x"]:
+                    len_traces += 1
                 json_output.append(trace)
 
             bed_traces[chrom] = json_output
-            logger.info(
-                "highlighted points on %s: %d"
-                % (chr, sum([len(j["x"]) for i, j in traces.items()]))
-            )
+            logger.info("plotting %d traces on chrom %s" % (len_traces, chr))
 
     bed_traces["chromosomes"] = chroms
     bed_traces["sex_chroms"] = sex_chroms
