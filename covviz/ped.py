@@ -81,13 +81,13 @@ def parse_ped(path, traces, sample_col, sex_chroms, sex_vals="1,2"):
 
                 # male
                 if row["sex"] == male:
-                    ped_data["inferred"]["color"].append("rgba(12,44,132,0.5)")
+                    ped_data["inferred"]["color"].append("rgba(144,237,125,0.5)")
                     ped_data["inferred"]["hover"].append(
                         "Sample: %s<br>Inferred X CN: 1" % (row[sample_col],)
                     )
                 # female
                 elif row["sex"] == female:
-                    ped_data["inferred"]["color"].append("rgba(227,26,28,0.5)")
+                    ped_data["inferred"]["color"].append("rgba(247,163,92,0.5)")
                     ped_data["inferred"]["hover"].append(
                         "Sample: %s<br>Inferred X CN: 2" % (row[sample_col],)
                     )
