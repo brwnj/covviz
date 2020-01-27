@@ -1,0 +1,15 @@
+{
+    "covviz.manifest": "/Users/joe/devel/covviz/wdl/manifest.tsv",
+    "covviz.fasta_index": "/Users/joe/devel/covviz/data/g1k_v37_decoy.fa.fai",
+    "covviz.project": "covviz",
+    "covviz.gff": "/Users/joe/devel/covviz/data/Homo_sapiens.GRCh37.82.gff3.gz",
+    "covviz.minsamples": 8,
+    "covviz.sexchroms": "X,Y",
+    "covviz.excludepatt": "^GL|^hs|^chrEBV$|M$|MT$|^NC|_random$|Un_|^HLA\\-|_alt$|hap\\d+$",
+    "covviz.zthreshold": 3.5,
+    "covviz.distancethreshold": 150000,
+    "covviz.slop": 500000,
+
+    "covviz.memory": 8,
+    "covviz.disk_size": 20
+}

@@ -1,5 +1,5 @@
 task run_indexcov {
-    input {
+    # input {
         File fasta_index
         Array[File] alignment_indexes
         String sexchroms = "X,Y"
@@ -8,9 +8,9 @@ task run_indexcov {
 
         Int disk_size = 20
         Int memory = 8
-    }
+    # }
     command {
-        goleft indexcov --sex ${sexchroms} ${true="--excludepatt" false="" excludepatt} ${excludepatt} \
+        goleft indexcov --sex '${sexchroms}' ${"--excludepatt='" + excludepatt + "'"} \
             --directory ${project} --fai ${fasta_index} ${sep=" " alignment_indexes}
         mv ${project}/* .
     }
@@ -36,7 +36,7 @@ task run_indexcov {
 }
 
 task run_covviz {
-    input {
+    # input {
         File bed
         File ped
         File? gff
@@ -46,16 +46,16 @@ task run_covviz {
         Float zthreshold = 3.5
         Int distancethreshold = 150000
         Int slop = 500000
-        Boolean skipnorm = "true"
+        Boolean skipnorm = true
 
         Int disk_size = 20
         Int memory = 8
-    }
+    # }
     command {
-        covviz --min-samples ${minsamples} --sex-chroms ${sexchroms} \
-            ${true="--excludepatt" false="" excludepatt} ${excludepatt} \
-            --z-threshold ${zthreshold} --distance-threshold ${distancethreshold} \
-            --slop ${slop} --ped ${ped} ${true="--gff" false="" gff} ${gff} \
+        covviz --min-samples ${minsamples} --sex-chroms '${sexchroms}' \
+            ${"--exclude '" + excludepatt + "'"} --z-threshold ${zthreshold} \
+            --distance-threshold ${distancethreshold} --slop ${slop} \
+            --ped ${ped} ${"--gff " + gff} \
             ${true="--skip-norm" false="" skipnorm} ${bed}
     }
     runtime {
@@ -63,115 +63,74 @@ task run_covviz {
         cpu: 1
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 2
-        docker: "brwnj/covviz:v1.1.5"
+        docker: "brwnj/covviz:v1.2.0"
     }
     output {
         File covviz_report = "covviz_report.html"
     }
+    parameter_meta {
+        gff: "file path to gff matching genome build of `bed`"
+        sexchroms: "sex chromosomes as they are in `bed`"
+        excludepatt: "regular expression of chromosomes to skip"
+        zthreshold: "a sample must greater than this many standard deviations in order to be found significant"
+        distancethreshold: "consecutive significant points must span this distance in order to pass this filter"
+        slop: "leading and trailing segments added to significant regions to make them more visible"
+    }
     meta {
         author: "Joe Brown"
         email: "brwnjm@gmail.com"
-        description: "Generate covviz HTML report from normalized"
+        description: "Generate covviz HTML report from normalized input"
     }
 }
 
-workflow smoove {
+workflow covviz {
+    # input {
+        # single column file with cram indexes in column 0
+        File manifest
+        Array[Array[String]] sample_data = read_tsv(manifest)
+        File fasta_index
 
-    File manifest
-    Array[Array[File]] sample_data = read_tsv(manifest)
-    File fasta
-    File fasta_index
-    File bed
-    File gff
-    File ? ped
-    File ? known_sites
-    String project_id
-    String exclude_chroms
-    Boolean sensitive
+        String project = "covviz"
+        File? gff
+        Int minsamples = 8
+        String sexchroms = "X,Y"
+        String excludepatt = "^GL|^hs|^chrEBV$|M$|MT$|^NC|_random$|Un_|^HLA\\-|_alt$|hap\\d+$"
+        Float zthreshold = 3.5
+        Int distancethreshold = 150000
+        Int slop = 500000
 
-    Int small_disk
-    Int medium_disk
-    Int large_disk
-
-    scatter (sample in sample_data) {
-        call smoove_call {
-            input:
-                sample_id = sample[0],
-                alignments = sample[1],
-                alignments_index = sample[2],
-                fasta = fasta,
-                fasta_index = fasta_index,
-                bed = bed,
-                exclude_chroms = exclude_chroms,
-                sensitive = sensitive,
-                disk_size = small_disk
-        }
-    }
-    call smoove_merge {
+        Int disk_size = 20
+        Int memory = 8
+    # }
+    call run_indexcov {
         input:
-            project_id = project_id,
-            fasta = fasta,
             fasta_index = fasta_index,
-            vcfs = smoove_call.called_vcf,
-            vcf_indexes = smoove_call.called_vcf_index,
-            disk_size = small_disk
+            alignment_indexes = flatten(sample_data),
+            sexchroms = sexchroms,
+            excludepatt = excludepatt,
+            project = project,
+
+            disk_size = disk_size,
+            memory = memory
     }
-    scatter (sample in sample_data) {
-        call smoove_genotype {
-            input:
-                sample_id = sample[0],
-                alignments = sample[1],
-                alignments_index = sample[2],
-                fasta = fasta,
-                fasta_index = fasta_index,
-                vcf = smoove_merge.merged_vcf,
-                disk_size = small_disk
-        }
-    }
-    call smoove_square {
+    call run_covviz {
         input:
-            project_id = project_id,
-            vcfs = smoove_genotype.genotyped_vcf,
-            vcf_indexes = smoove_genotype.genotyped_vcf_index,
+            bed = run_indexcov.indexcov_bed,
+            ped = run_indexcov.indexcov_ped,
             gff = gff,
-            disk_size = small_disk
+            minsamples = minsamples,
+            sexchroms = sexchroms,
+            excludepatt = excludepatt,
+            zthreshold = zthreshold,
+            distancethreshold = distancethreshold,
+            slop = slop,
+
+            disk_size = disk_size,
+            memory = memory
     }
-}
-
-
-workflow {
-    Array[File]
-    File fasta_index
-
---indexes              quoted file path with wildcard ('*.crai') to
-                           cram or bam indexes
-    --fai                  file path to .fai reference index
-
-
-    Workflow Options
-
-    --outdir               output directory for results
-                           default: "./results"
-    --gff                  file path to gff matching genome build of
-                           `--indexes`
-    --sexchroms            sex chromosomes as they are in `--indexes`
-                           default: "X,Y"
-    --exclude              regular expression of chromosomes to skip
-                           default: "^GL|^hs|^chrEBV\$|M\$|MT\$|^NC|_random\$|Un_|^HLA\\-|_alt\$|hap\\d+\$"
-    --zthreshold           a sample must greater than this many standard
-                           deviations in order to be found significant
-                           default: 3.5
-    --distancethreshold    consecutive significant points must span this
-                           distance in order to pass this filter
-                           default: 150000
-    --slop                 leading and trailing segments added to
-                           significant regions to make them more visible
-                           default: 500000
-    --ped                  custom metadata that will be merged with the
-                           .ped output of indexcov
-                           default: false
-    --samplecol            the column header for sample IDs in your custom
-                           ped file
-                           default: "sample_id"
-
+    meta {
+        author: "Joe Brown"
+        email: "brwnjm@gmail.com"
+        description: "Multi-sample genome coverage viewer to observe large, coverage-based anomalies"
+    }
 }
