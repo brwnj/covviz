@@ -12,7 +12,6 @@ task run_indexcov {
     command {
         goleft indexcov --sex '${sexchroms}' ${"--excludepatt='" + excludepatt + "'"} \
             --directory ${project} --fai ${fasta_index} ${sep=" " alignment_indexes}
-        mv ${project}/* .
     }
     runtime {
         memory: memory + "GB"
@@ -22,11 +21,8 @@ task run_indexcov {
         docker: "brentp/smoove:v0.2.5"
     }
     output {
-        Array[File] indexcov_pngs = glob("${project}-indexcov-*.png")
-        Array[File] indexcov_html = glob("*.html")
-        File indexcov_bed = "${project}-indexcov.bed.gz"
-        File indexcov_ped = "${project}-indexcov.ped"
-        File indexcov_roc = "${project}-indexcov.roc"
+        File indexcov_bed = "${project}/${project}-indexcov.bed.gz"
+        File indexcov_ped = "${project}/${project}-indexcov.ped"
     }
     meta {
         author: "Joe Brown"
