@@ -21,8 +21,11 @@ task run_indexcov {
         docker: "brentp/smoove:v0.2.5"
     }
     output {
+        Array[File] indexcov_pngs = glob("${project}/${project}-indexcov-*.png")
+        Array[File] indexcov_html = glob("${project}/*.html")
         File indexcov_bed = "${project}/${project}-indexcov.bed.gz"
         File indexcov_ped = "${project}/${project}-indexcov.ped"
+        File indexcov_roc = "${project}/${project}-indexcov.roc"
     }
     meta {
         author: "Joe Brown"
