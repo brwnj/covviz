@@ -73,9 +73,17 @@ def parse_ped(path, traces, sample_col, sex_chroms, sex_vals="1,2"):
 
             if via_indexcov:
                 # inferred sex
-                ped_data["inferred"]["x"].append(row["CN%s" % sex_chroms[0]])
+                try:
+                    ped_data["inferred"]["x"].append(row["CN%s" % sex_chroms[0]])
+                except KeyError:
+                    ped_data["inferred"]["x"].append(row["CNchr%s" % sex_chroms[0]])
                 try:
                     ped_data["inferred"]["y"].append(row["CN%s" % sex_chroms[1]])
+                except KeyError:
+                    try:
+                        ped_data["inferred"]["y"].append(row["CNchr%s" % sex_chroms[1]])
+                    except IndexError:
+                        ped_data["inferred"]["y"].append(0)
                 except IndexError:
                     ped_data["inferred"]["y"].append(0)
 
