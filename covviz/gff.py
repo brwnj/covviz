@@ -50,6 +50,7 @@ def parse_gff(
                 end = int(toks[4])
                 try:
                     name = name_re.findall(toks[8])[0]
+                    name = name.strip('"').strip("'")
                 except IndexError:
                     name = ""
                 genes.append([start, end, [name]])
