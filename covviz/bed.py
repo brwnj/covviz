@@ -272,6 +272,7 @@ def parse_bed(
         for chr, entries in groupby(reader, key=lambda i: i[header[0]]):
             # apply exclusions
             if exclude.findall(chr):
+                logger.debug("excluding chromosome: %s" % chr)
                 continue
 
             data = defaultdict(list)

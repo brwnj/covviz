@@ -110,6 +110,11 @@ def parse_args():
         ),
     )
     p.add_argument(
+        "--skip-compression",
+        action="store_true",
+        help="skip compression of data within html output (helps with debugging)",
+    )
+    p.add_argument(
         "--min-samples",
         default=8,
         type=int,
@@ -186,14 +191,16 @@ def parse_args():
             "field in ClinVar"
         ),
     )
-
     return p.parse_args()
 
 
-def compress_data(data):
-    json_str = json.dumps(data).encode("utf-8", "ignore").decode("utf-8")
-    json_str = json_str.replace("NaN", "null")
-    return LZString().compressToBase64(json_str)
+def prepare_data(data, skip_compress=False):
+    if skip_compress:
+        return data
+    else:
+        json_str = json.dumps(data).encode("utf-8", "ignore").decode("utf-8")
+        json_str = json_str.replace("NaN", "null")
+        return LZString().compressToBase64(json_str)
 
 
 def cli():
@@ -292,8 +299,11 @@ def cli():
 
     with open(args.output, "w") as fh:
         logger.info("preparing output")
-        compressed_json_data = compress_data(traces)
         html_template = env.get_template("covviz.html")
-        print(html_template.render(data=compressed_json_data), file=fh)
+        json_data = prepare_data(traces, skip_compress=args.skip_compression)
+        print(
+            html_template.render(data=json_data, skip_compress=args.skip_compression),
+            file=fh,
+        )
 
     logger.info("processing complete")

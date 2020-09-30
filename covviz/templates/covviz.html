@@ -220,8 +220,11 @@
 </script>
 
 <script>
-    const compressed_data = "{{data}}"
-    const data = JSON.parse(LZString.decompressFromBase64(compressed_data))
+    {% if skip_compress is sameas true %}
+    const data = {{data|tojson}}
+    {% else %}
+    const data = JSON.parse(LZString.decompressFromBase64("{{data}}"))
+    {% endif %}
     const sample_column = data.sample_column
     const cov_color = 'rgba(108,117,125,0.2)'
     // const highlight_color = 'rgb(255,147,0)'
