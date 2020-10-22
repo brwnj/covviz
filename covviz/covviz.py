@@ -16,20 +16,16 @@ once.
 """
 
 import argparse
-import csv
-import json
 import logging
 import os
 import re
-from collections import defaultdict
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from lzstring import LZString
 
 from .bed import parse_bed, parse_bed_track
 from .gff import parse_gff
 from .ped import parse_ped
-from .utils import gzopen
+from .utils import optimize_coords
 from .vcf import parse_vcf
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -108,11 +104,6 @@ def parse_args():
             "skip normalization by global sample median if the depths "
             "in your .bed are already normalized"
         ),
-    )
-    p.add_argument(
-        "--skip-compression",
-        action="store_true",
-        help="skip compression of data within html output (helps with debugging)",
     )
     p.add_argument(
         "--min-samples",
@@ -194,15 +185,6 @@ def parse_args():
     return p.parse_args()
 
 
-def prepare_data(data, skip_compress=False):
-    if skip_compress:
-        return data
-    else:
-        json_str = json.dumps(data).encode("utf-8", "ignore").decode("utf-8")
-        json_str = json_str.replace("NaN", "null")
-        return LZString().compressToBase64(json_str)
-
-
 def cli():
     args = parse_args()
 
@@ -215,7 +197,7 @@ def cli():
 
     exclude = re.compile(args.exclude.replace("~", "").replace(",", "|"))
 
-    traces, samples = parse_bed(
+    traces = parse_bed(
         args.bed,
         exclude,
         args.ped,
@@ -229,67 +211,24 @@ def cli():
         args.skip_norm,
     )
 
-    annotation_track_colors = [
-        "#666666",
-        "#1b9e77",
-        "#d95f02",
-        "#7570b3",
-        "#e7298a",
-        "#66a61e",
-        "#e6ab02",
-        "#a6761d",
-    ]
-
-    y_offset = -0.15
-    track_id = 0
+    traces = optimize_coords(traces)
 
     if args.gff:
         for gff in args.gff:
             logger.info("parsing gff file (%s)" % gff)
             traces = parse_gff(
-                gff,
-                traces,
-                exclude,
-                ftype=args.gff_feature,
-                regex=args.gff_attr,
-                y_offset=y_offset,
-                track_color=annotation_track_colors[
-                    track_id % len(annotation_track_colors)
-                ],
+                gff, traces, exclude, ftype=args.gff_feature, regex=args.gff_attr
             )
-            y_offset += -0.15
-            track_id += 1
 
     if args.bed_track:
         for bed in args.bed_track:
             logger.info("parsing bed file (%s)" % bed)
-            traces = parse_bed_track(
-                bed,
-                traces,
-                exclude,
-                y_offset=y_offset,
-                track_color=annotation_track_colors[
-                    track_id % len(annotation_track_colors)
-                ],
-            )
-            y_offset += -0.15
-            track_id += 1
+            traces = parse_bed_track(bed, traces, exclude)
 
     if args.vcf:
         for vcf in args.vcf:
             logger.info("parsing vcf file (%s)" % vcf)
-            traces = parse_vcf(
-                vcf,
-                traces,
-                exclude,
-                regex=args.vcf_info,
-                y_offset=y_offset,
-                track_color=annotation_track_colors[
-                    track_id % len(annotation_track_colors)
-                ],
-            )
-            y_offset += -0.15
-            track_id += 1
+            traces = parse_vcf(vcf, traces, exclude, regex=args.vcf_info)
 
     if args.ped:
         logger.info("parsing ped file (%s)" % args.ped)
@@ -300,10 +239,6 @@ def cli():
     with open(args.output, "w") as fh:
         logger.info("preparing output")
         html_template = env.get_template("covviz.html")
-        json_data = prepare_data(traces, skip_compress=args.skip_compression)
-        print(
-            html_template.render(data=json_data, skip_compress=args.skip_compression),
-            file=fh,
-        )
+        print(html_template.render(data=traces), file=fh)
 
     logger.info("processing complete")

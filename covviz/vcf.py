@@ -10,13 +10,11 @@ except ImportError:
     from itertools import filterfalse
 
 
-def parse_vcf(path, traces, exclude, regex=None, y_offset=-0.15, track_color="#444"):
+def parse_vcf(path, traces, exclude, regex=None):
     """
     parse a VCFv4.1 file, placing squares per variant
     """
-
-    trace_name = os.path.basename(path)
-
+    trace_name = os.path.basename(path).partition(".vcf")[0]
     with gzopen(path) as fh:
         cleaned = filterfalse(lambda i: i[0] == "#", fh)
 
@@ -33,9 +31,13 @@ def parse_vcf(path, traces, exclude, regex=None, y_offset=-0.15, track_color="#4
             if chrom not in traces:
                 continue
 
-            trace_x = list()
-            trace_y = list()
-            trace_text = list()
+            if not "annotations" in traces[chrom]:
+                traces[chrom]["annotations"] = {"vcf": []}
+            if not "vcf" in traces[chrom]["annotations"]:
+                traces[chrom]["annotations"]["vcf"] = list()
+
+            x_vals = list()
+            text = list()
 
             for line in entries:
                 if line.startswith("#"):
@@ -44,33 +46,19 @@ def parse_vcf(path, traces, exclude, regex=None, y_offset=-0.15, track_color="#4
                 toks = line.strip().split("\t")
 
                 # not currently converting 0- and 1-based
-                x = int(toks[1])
+                x_vals.append(int(toks[1]))
 
-                info = toks[7].replace(";", "<br>")
+                # info = toks[7].replace(";", "<br>")
+                info = toks[7]
                 if info_re:
                     try:
                         info = info_re.findall(toks[7])[0]
                     except IndexError:
-                        info = ""
+                        pass
+                info = toks[2] + ";" + info
+                text.append(info)
 
-                trace_x.append(x)
-                trace_y.append(y_offset)
-                trace_text.append(info)
-
-            trace = dict(
-                x=trace_x,
-                y=trace_y,
-                mode="markers",
-                type="scattergl",
-                name=trace_name,
-                text=trace_text,
-                marker=dict(
-                    size=10,
-                    symbol="square",
-                    color=track_color,
-                    line=dict(width=1, color="white"),
-                ),
-                tracktype="vcf",
+            traces[chrom]["annotations"]["vcf"].append(
+                [trace_name, {"x": x_vals, "text": text}]
             )
-            traces[chrom].append(trace)
     return traces

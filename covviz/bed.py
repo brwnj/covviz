@@ -1,14 +1,14 @@
 import csv
 import logging
 import os
-import re
+import sys
 from collections import defaultdict
 from itertools import groupby
 
 import numpy as np
 import pandas as pd
 
-from .utils import COLORS, gzopen, merge_intervals
+from .utils import gzopen
 
 try:
     from itertools import ifilterfalse as filterfalse
@@ -202,7 +202,9 @@ def add_roc_traces(path, traces, exclude):
     df = pd.read_csv(path, sep="\t", low_memory=False)
     n_bins = 150
     x_max = 2.5
-    x = list(np.linspace(0, x_max, n_bins))
+    traces["roc"]["x_coords"] = [
+        round(i, 2) for i in list(np.linspace(0, x_max, n_bins))
+    ]
 
     for chrom, data in df.groupby(df.columns[0]):
         chrom = str(chrom)
@@ -210,29 +212,20 @@ def add_roc_traces(path, traces, exclude):
         if exclude.findall(chrom):
             continue
 
-        chrom = chrom.lstrip("chr")
+        chrom = chrom[3:] if chrom.startswith("chr") else chrom
 
         # pre-normalized data
         arr = np.asarray(data.iloc[:, 3:])
-        traces["roc"][chrom] = list()
+        traces["roc"][chrom] = dict()
 
         for i in range(0, arr.shape[1]):
             # get counts across our x-range of bins
             counts, _ = np.histogram(arr[:, i], bins=n_bins, range=(0, x_max))
             # decreasing order of the cumulative sum across the bins
             sums = counts[::-1].cumsum()[::-1]
-            # normalize to y_max to 1
+            # normalize to y_max of 1
             sums = list(sums.astype(float) / max(1, sums[0]))
-
-            trace = dict(
-                x=x,
-                y=sums,
-                hoverinfo="text",
-                mode="lines",
-                text=df.columns[i + 3],
-                marker={"color": "rgba(108,117,125,0.2)"},
-            )
-            traces["roc"][chrom].append(trace)
+            traces["roc"][chrom][df.columns[i + 3]] = [round(i, 2) for i in sums]
     return traces
 
 
@@ -250,11 +243,9 @@ def parse_bed(
     skip_norm=False,
 ):
     bed_traces = dict()
-    exclusions = re.compile(exclude)
     # chromosomes, in order of appearance
     chroms = list()
     samples = list()
-    sample_trace_color = dict()
 
     sex_chroms = [i.strip("chr") for i in sex_chroms.split(",")]
 
@@ -278,7 +269,7 @@ def parse_bed(
             data = defaultdict(list)
             bounds = dict(upper=[], lower=[])
             outliers = defaultdict(list)
-            chrom = chr.lstrip("chr")
+            chrom = chr[3:] if chr.startswith("chr") else chr
             chroms.append(chrom)
 
             # capture plot area and outlier traces
@@ -289,9 +280,6 @@ def parse_bed(
             for x_index, row in enumerate(entries):
                 if not samples:
                     samples = [i for i in sorted(row.keys()) if i not in header[:3]]
-                    # plot outlier traces across chromosomes with the same color for a given sample
-                    for sample_index, sample in enumerate(samples):
-                        sample_trace_color[sample] = COLORS[sample_index % len(COLORS)]
                     if groups:
                         valid = validate_samples(samples, groups)
                         if not valid:
@@ -308,6 +296,7 @@ def parse_bed(
                 for group_index, (gid, samples_of_group) in enumerate(
                     sample_groups.items()
                 ):
+                    # adds area traces where groups are present (chrs X and Y)
                     if len(bounds["upper"]) == group_index:
                         bounds["upper"].append([])
                         bounds["lower"].append([])
@@ -356,62 +345,49 @@ def parse_bed(
 
             # update the outlier traces
             traces = get_traces(data, samples, outliers, distance_threshold, slop)
+            json_output = dict(upper=[], lower=[], coords=data["x"], samples=[])
 
-            json_output = []
-
-            marker_color = "rgba(108,117,125,0.1)"
-            fill_color = "rgba(108,117,125,0.3)"
             # add the area traces
             for trace_index in range(len(bounds["upper"])):
                 for bound in ["lower", "upper"]:
-                    trace = dict(
-                        x=data["x"],
-                        y=bounds[bound][trace_index],
-                        fill="none",
-                        type="scatter",
-                        mode="lines",
-                        hoverinfo="none",
-                        marker={"color": marker_color},
+                    json_output[bound].append(
+                        [round(i, 2) for i in bounds[bound][trace_index]]
                     )
-                    if bound == "upper":
-                        trace["fill"] = "tonexty"
-                        trace["fillcolor"] = fill_color
-                    json_output.append(trace)
             # add the sample traces for the outlier plots atop area traces
             len_traces = 0
             for sample, trace_data in traces.items():
-                trace = dict(
-                    x=trace_data["x"],
-                    y=trace_data["y"],
-                    text=sample,
-                    connectgaps=False,
-                    hoverinfo="text",
-                    mode="lines",
-                    name="significant",
-                    # include color as primary colors occupied by area traces
-                    marker={"width": 1, "color": sample_trace_color[sample]},
+                if not trace_data["x"]:
+                    continue
+                # y data may be gapped (string separated floats)
+                y_data = list()
+                for v in trace_data["y"]:
+                    try:
+                        y_data.append(round(v, 2))
+                    except TypeError:
+                        y_data.append(v)
+                json_output["samples"].append(
+                    {"name": sample, "x": trace_data["x"], "y": y_data}
                 )
-                if trace_data["x"]:
-                    len_traces += 1
-                json_output.append(trace)
+                len_traces += 1
 
             bed_traces[chrom] = json_output
             logger.info("plotting %d traces on chrom %s" % (len_traces, chr))
 
     bed_traces["chromosomes"] = chroms
-    bed_traces["sex_chroms"] = sex_chroms
+    bed_traces["sample_list"] = samples
+    # bed_traces["sex_chroms"] = sex_chroms
 
     # pass the bed or normed bed
     add_roc_traces(path, bed_traces, exclude)
 
-    return bed_traces, samples
+    return bed_traces
 
 
-def parse_bed_track(path, traces, exclude, y_offset=-0.15, track_color="#444"):
+def parse_bed_track(path, traces, exclude):
     """
     parse a bed file, placing lines per region
     """
-    trace_name = os.path.basename(path)
+    trace_name = os.path.basename(path).partition(".bed")[0]
 
     with gzopen(path) as fh:
         cleaned = filterfalse(lambda i: i[0] == "#", fh)
@@ -424,6 +400,12 @@ def parse_bed_track(path, traces, exclude, y_offset=-0.15, track_color="#444"):
                 continue
             if chrom not in traces:
                 continue
+
+            if not "annotations" in traces[chrom]:
+                traces[chrom]["annotations"] = {"bed": []}
+            if not "bed" in traces[chrom]["annotations"]:
+                traces[chrom]["annotations"]["bed"] = list()
+
             regions = list()
             for line in entries:
                 if line.startswith("#"):
@@ -436,42 +418,8 @@ def parse_bed_track(path, traces, exclude, y_offset=-0.15, track_color="#444"):
                     name = toks[3]
                 except IndexError:
                     name = ""
-                regions.append([start, end, [name]])
-            if regions:
-                merged_regions = merge_intervals(regions)
-                # update list to semi-colon delimited string
-                for interval in merged_regions:
-                    interval[2] = ";".join(set(interval[2]))
-                    if len(interval[2]) > 55:
-                        interval[2] = interval[2][0:55] + "..."
+                regions.append([start, end, name])
 
-                x_values = list()
-                y_values = list()
-                text_values = list()
-                for interval in merged_regions:
-                    # start
-                    x_values.append(interval[0])
-                    # end
-                    x_values.append(interval[1])
-                    # gap
-                    x_values.append("")
-                    y_values.append(y_offset)
-                    y_values.append(y_offset)
-                    y_values.append("")
-                    text_values.append(interval[2])
-                    text_values.append(interval[2])
-                    text_values.append("")
-                trace = dict(
-                    x=x_values,
-                    y=y_values,
-                    text=text_values,
-                    type="scattergl",
-                    name=trace_name,
-                    tracktype="bed",
-                    connectgaps=False,
-                    # hoverinfo="text",
-                    showlegend=False,
-                    line={"width": 10, "color": track_color},
-                )
-                traces[chrom].append(trace)
+            traces[chrom]["annotations"]["bed"].append([trace_name, regions])
+
     return traces

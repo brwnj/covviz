@@ -3,38 +3,67 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="author" content="Joe Brown - Base2 Genomics" />
-    <title>covviz - Base2 Genomics</title>
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
+    <meta name="author" content="Joe Brown" />
+    <title>covviz</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" rel="stylesheet">
+    <link href="https://raw.githack.com/ttskch/select2-bootstrap4-theme/master/dist/select2-bootstrap4.css"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
     <!-- datatables, bootstrap 4 with select, responsive, scroller, searchpanes and html5 buttons -->
     <script type="text/javascript"
         src="https://cdn.datatables.net/v/bs4/dt-1.10.20/b-1.6.1/b-html5-1.6.1/r-2.2.3/sc-2.0.1/sp-1.0.1/sl-1.3.1/datatables.min.js"></script>
     <script type="text/javascript"
         src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"></script>
-    <script type="text/javascript"
-        src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/v/bs4/dt-1.10.20/b-1.6.1/b-html5-1.6.1/r-2.2.3/sc-2.0.1/sp-1.0.1/sl-1.3.1/datatables.min.css" />
     <link rel="stylesheet" type="text/css"
         href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.bootstrap3.min.css">
-    <link rel="stylesheet" type="text/css"
-        href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
 
-    <style type="text/css">
+    <style>
+        body {
+            height: 100%;
+            margin: 0px;
+            padding: 0px;
+        }
+
+        .brand {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.8rem;
+        }
+
         .disabled_div {
             pointer-events: none;
             opacity: 0.4
         }
 
-        div.dataTables_wrapper div.dataTables_info {
-            padding-top: 0em;
+        div#ped_table_filter.dataTables_filter label {
+            margin-bottom: 0;
         }
 
-        tr.selected {
-            background-color: rgba(161, 234, 247, 0.5) !important;
-            color: black !important
+        div.dataTables_wrapper div.dataTables_info {
+            padding-top: 0
+        }
+
+        .table-responsive {
+            font-size: 0.85em;
+        }
+
+        .msg {
+            background-color: white;
+            font-size: 1em;
+            border-right: none;
         }
 
         .tab-content>.tab-pane:not(.active),
@@ -44,29 +73,18 @@
             overflow-y: hidden;
         }
 
-        .nav-pills .nav-link.active,
-        .nav-pills .show>.nav-link {
-            background-color: #6c757d !important;
-        }
-
         .selectize-input {
             min-height: 38px !important;
             padding: 7px 12px !important;
         }
 
         .form-control.selectize-control {
-            height: 40px !important;
+            height: 38px !important;
             padding: 0px 0px 0px;
         }
 
         #gene_search_div {
-            width: 250px;
-        }
-
-        .remove-single {
-            color: gray !important;
-            top: -1px !important;
-            font-size: 20px !important;
+            width: 180px;
         }
 
         table.dataTable thead th.sorting:after,
@@ -83,71 +101,69 @@
             top: 8px;
             background-color: #6c757d;
         }
+
+        .btn-group-sm>.btn,
+        .btn-sm {
+            font-size: .775rem;
+            line-height: 1.0;
+        }
     </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-dark navbar-expand-md p-0" style="background-color: #3C444C;">
-        <a class="navbar-brand m-0 p-1 text-light"><img class="pr-4"
-                src='data:image/png;base64,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'
-                alt="" height="58">
-        </a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-items"
-            aria-controls="navbar-items" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbar-items">
-            <ul class="nav nav-pills mr-auto" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link text-white active" data-toggle="tab" role="tab" href="#chrom_coverage"
-                        aria-controls="chrom_coverage" aria-selected="true">Chromosome Coverage</a>
-                </li>
-                <li class="nav-item" id="global_qc_nav" hidden>
-                    <a class="nav-link text-white" data-toggle="tab" role="tab" href="#global_qc"
-                        aria-controls="global_qc" aria-selected="false">Global QC</a>
-                </li>
-            </ul>
+    <nav class="navbar navbar-light bg-light border-bottom mx-0 p-1">
+        <a class="navbar-brand brand text-decoration-none p-0 pl-2" href="https://github.com/brwnj/covviz">covviz</a>
+        <ul class="nav nav-pills mr-auto">
+            <li class="nav-item">
+                <a class="nav-link active" data-toggle="tab" role="tab" id="chrom-cov-link"
+                    href="#coverage">Chromosome Coverage</a>
+            </li>
+            <li class="nav-item" id="global_qc_nav">
+                <a class="nav-link" data-toggle="tab" role="tab" id="global-qc-link" href="#qc">Global QC</a>
+            </li>
+        </ul>
+        <form class="form-inline flex-nowrap my-2 my-lg-0" id="chromosome-ux-form">
+            <div class="input-group flex-nowrap pr-2">
+                <div class="input-group-prepend">
+                    <span class="input-group-text d-none d-xl-block">Chromosome</span>
+                    <span class="input-group-text d-xl-none">Chr</span>
+                </div>
+                <select class="form-control" id="region-select"></select>
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="button" id="btn-previous" title="Previous region (&#8592;)"
+                        data-toggle="tooltip"><i class="fas fa-caret-left"></i></button>
+                </div>
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="button" id="btn-next" title="Next region (&#8594;)"
+                        data-toggle="tooltip"><i class="fas fa-caret-right"></i></button>
+                </div>
+            </div>
             <div class="pr-2" id="gene_search_div" hidden>
                 <div class="input-group">
                     <input type="text" class="form-control" id="gene-search" aria-label="gene-search">
                 </div>
             </div>
-        </div>
-
+        </form>
     </nav>
-    <div class="container-fluid w-90 pt-3">
-        <div class="tab-content">
-            <div class="tab-pane fade show active" id="chrom_coverage" role="tabpanel" aria-labelledby="scaled_tab">
-                <div class="row">
-                    <div class="col-12" id="chrom_selector_div">
-                        <div id="chrom_selector"
-                            class="btn-group btn-group-toggle d-flex justify-content-center flex-wrap"
-                            data-toggle="buttons">
-                            <div class="input-group-prepend d-none d-xl-block">
-                                <span class="input-group-text">Chromosome:</span>
-                            </div>
-                            <div class="input-group-prepend d-xl-none">
-                                <span class="input-group-text">Chr:</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <ul class="nav nav-tabs pt-3" role="tablist">
+
+    <main role="main" class="container-fluid w-90">
+        <div class="tab-content pt-2">
+            <div class="tab-pane show active" id="coverage" role="tabpanel">
+                <ul class="nav nav-tabs" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active text-secondary" id="scaled_tab" data-toggle="tab" href="#scaled"
-                            role="tab" aria-controls="scaled" aria-selected="true">Scaled chromosome coverage</a>
+                        <a class="nav-link active" id="scaled_tab" data-toggle="tab" href="#scaled" role="tab">Scaled
+                            coverage</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-secondary" id="cov_tab" data-toggle="tab" href="#cov" role="tab"
-                            aria-controls="cov" aria-selected="false">Proportions covered</a>
+                        <a class="nav-link" id="cov_tab" data-toggle="tab" href="#cov" role="tab">Proportions
+                            covered</a>
                     </li>
                 </ul>
                 <div class="tab-content">
-                    <div class="tab-pane fade show active mb-3" id="scaled" role="tabpanel"
-                        aria-labelledby="scaled_tab">
-                        <div style="height:600px" id="scaled_plot_placeholder">
+                    <div class="tab-pane show active" id="scaled" role="tabpanel">
+                        <div style="height:500px" id="scaled_plot_placeholder">
                             <div
-                                class="mt-3 d-flex justify-content-center align-items-center bg-light text-muted h-100">
+                                class="mt-2 d-flex justify-content-center align-items-center bg-light text-muted h-100">
                                 <div class="d-flex flex-column">
                                     <div>
                                         Loading...
@@ -155,12 +171,12 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="row pt-3 mb-3" id="scaled_plot" hidden></div>
+                        <div class="row pt-2" id="scaled_plot" hidden></div>
                     </div>
-                    <div class="tab-pane fade mb-3" id="cov" role="tabpanel" aria-labelledby="cov_tab">
-                        <div style="height:600px" id="cov_plot_placeholder">
+                    <div class="tab-pane" id="cov" role="tabpanel">
+                        <div style="height:500px" id="cov_plot_placeholder">
                             <div
-                                class="mt-3 d-flex justify-content-center align-items-center bg-light text-muted h-100">
+                                class="mt-2 d-flex justify-content-center align-items-center bg-light text-muted h-100">
                                 <div class="d-flex flex-column">
                                     <div>
                                         Loading...
@@ -168,18 +184,18 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="row pt-3 mb-3" id="cov_plot" hidden></div>
+                        <div class="row pt-2" id="cov_plot" hidden></div>
                     </div>
                 </div>
             </div>
-            <div class="tab-pane fade" id="global_qc" role="tabpanel" aria-labelledby="global_qc">
+            <div class="tab-pane" id="qc" role="tabpanel">
                 <div id="global_qc_plots" class="container-fluid w-90">
                     <div class="row border-bottom">
                         <div class="col-6">
-                            <h4>Inferred sex</h4>
+                            <h5>Inferred sex</h5>
                         </div>
                         <div class="col-6">
-                            <h4>Problematic low and non-uniform coverage bins</h4>
+                            <h5>Problematic low and non-uniform coverage bins</h5>
                         </div>
                     </div>
                     <div class="row">
@@ -190,7 +206,7 @@
             </div>
         </div>
         <div class="container-fluid mb-5">
-            <div class="row pt-3 pb-3">
+            <div class="row border bg-light py-3 d-none" id="table-wrapper">
                 <div class="col-12">
                     <div class="table-responsive">
                         <table id="ped_table" class="table table-hover table-striped table-sm display nowrap"
@@ -199,39 +215,17 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 </body>
 
 <script>
-    // MIT License
-
-    // Copyright (c) 2013 pieroxy
-
-    // Permission is hereby granted, free of charge, to any person obtaining a copy
-    // of this software and associated documentation files (the "Software"), to deal
-    // in the Software without restriction, including without limitation the rights
-    // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    // copies of the Software, and to permit persons to whom the Software is
-    // furnished to do so, subject to the following conditions:
-
-    // The above copyright notice and this permission notice shall be included in all
-    // copies or substantial portions of the Software.
-    var LZString = function () { function o(o, r) { if (!t[o]) { t[o] = {}; for (var n = 0; n < o.length; n++)t[o][o.charAt(n)] = n } return t[o][r] } var r = String.fromCharCode, n = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=", e = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$", t = {}, i = { compressToBase64: function (o) { if (null == o) return ""; var r = i._compress(o, 6, function (o) { return n.charAt(o) }); switch (r.length % 4) { default: case 0: return r; case 1: return r + "==="; case 2: return r + "=="; case 3: return r + "=" } }, decompressFromBase64: function (r) { return null == r ? "" : "" == r ? null : i._decompress(r.length, 32, function (e) { return o(n, r.charAt(e)) }) }, compressToUTF16: function (o) { return null == o ? "" : i._compress(o, 15, function (o) { return r(o + 32) }) + " " }, decompressFromUTF16: function (o) { return null == o ? "" : "" == o ? null : i._decompress(o.length, 16384, function (r) { return o.charCodeAt(r) - 32 }) }, compressToUint8Array: function (o) { for (var r = i.compress(o), n = new Uint8Array(2 * r.length), e = 0, t = r.length; t > e; e++) { var s = r.charCodeAt(e); n[2 * e] = s >>> 8, n[2 * e + 1] = s % 256 } return n }, decompressFromUint8Array: function (o) { if (null === o || void 0 === o) return i.decompress(o); for (var n = new Array(o.length / 2), e = 0, t = n.length; t > e; e++)n[e] = 256 * o[2 * e] + o[2 * e + 1]; var s = []; return n.forEach(function (o) { s.push(r(o)) }), i.decompress(s.join("")) }, compressToEncodedURIComponent: function (o) { return null == o ? "" : i._compress(o, 6, function (o) { return e.charAt(o) }) }, decompressFromEncodedURIComponent: function (r) { return null == r ? "" : "" == r ? null : (r = r.replace(/ /g, "+"), i._decompress(r.length, 32, function (n) { return o(e, r.charAt(n)) })) }, compress: function (o) { return i._compress(o, 16, function (o) { return r(o) }) }, _compress: function (o, r, n) { if (null == o) return ""; var e, t, i, s = {}, p = {}, u = "", c = "", a = "", l = 2, f = 3, h = 2, d = [], m = 0, v = 0; for (i = 0; i < o.length; i += 1)if (u = o.charAt(i), Object.prototype.hasOwnProperty.call(s, u) || (s[u] = f++ , p[u] = !0), c = a + u, Object.prototype.hasOwnProperty.call(s, c)) a = c; else { if (Object.prototype.hasOwnProperty.call(p, a)) { if (a.charCodeAt(0) < 256) { for (e = 0; h > e; e++)m <<= 1, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++; for (t = a.charCodeAt(0), e = 0; 8 > e; e++)m = m << 1 | 1 & t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t >>= 1 } else { for (t = 1, e = 0; h > e; e++)m = m << 1 | t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t = 0; for (t = a.charCodeAt(0), e = 0; 16 > e; e++)m = m << 1 | 1 & t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t >>= 1 } l-- , 0 == l && (l = Math.pow(2, h), h++), delete p[a] } else for (t = s[a], e = 0; h > e; e++)m = m << 1 | 1 & t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t >>= 1; l-- , 0 == l && (l = Math.pow(2, h), h++), s[c] = f++ , a = String(u) } if ("" !== a) { if (Object.prototype.hasOwnProperty.call(p, a)) { if (a.charCodeAt(0) < 256) { for (e = 0; h > e; e++)m <<= 1, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++; for (t = a.charCodeAt(0), e = 0; 8 > e; e++)m = m << 1 | 1 & t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t >>= 1 } else { for (t = 1, e = 0; h > e; e++)m = m << 1 | t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t = 0; for (t = a.charCodeAt(0), e = 0; 16 > e; e++)m = m << 1 | 1 & t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t >>= 1 } l-- , 0 == l && (l = Math.pow(2, h), h++), delete p[a] } else for (t = s[a], e = 0; h > e; e++)m = m << 1 | 1 & t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t >>= 1; l-- , 0 == l && (l = Math.pow(2, h), h++) } for (t = 2, e = 0; h > e; e++)m = m << 1 | 1 & t, v == r - 1 ? (v = 0, d.push(n(m)), m = 0) : v++ , t >>= 1; for (; ;) { if (m <<= 1, v == r - 1) { d.push(n(m)); break } v++ } return d.join("") }, decompress: function (o) { return null == o ? "" : "" == o ? null : i._decompress(o.length, 32768, function (r) { return o.charCodeAt(r) }) }, _decompress: function (o, n, e) { var t, i, s, p, u, c, a, l, f = [], h = 4, d = 4, m = 3, v = "", w = [], A = { val: e(0), position: n, index: 1 }; for (i = 0; 3 > i; i += 1)f[i] = i; for (p = 0, c = Math.pow(2, 2), a = 1; a != c;)u = A.val & A.position, A.position >>= 1, 0 == A.position && (A.position = n, A.val = e(A.index++)), p |= (u > 0 ? 1 : 0) * a, a <<= 1; switch (t = p) { case 0: for (p = 0, c = Math.pow(2, 8), a = 1; a != c;)u = A.val & A.position, A.position >>= 1, 0 == A.position && (A.position = n, A.val = e(A.index++)), p |= (u > 0 ? 1 : 0) * a, a <<= 1; l = r(p); break; case 1: for (p = 0, c = Math.pow(2, 16), a = 1; a != c;)u = A.val & A.position, A.position >>= 1, 0 == A.position && (A.position = n, A.val = e(A.index++)), p |= (u > 0 ? 1 : 0) * a, a <<= 1; l = r(p); break; case 2: return "" }for (f[3] = l, s = l, w.push(l); ;) { if (A.index > o) return ""; for (p = 0, c = Math.pow(2, m), a = 1; a != c;)u = A.val & A.position, A.position >>= 1, 0 == A.position && (A.position = n, A.val = e(A.index++)), p |= (u > 0 ? 1 : 0) * a, a <<= 1; switch (l = p) { case 0: for (p = 0, c = Math.pow(2, 8), a = 1; a != c;)u = A.val & A.position, A.position >>= 1, 0 == A.position && (A.position = n, A.val = e(A.index++)), p |= (u > 0 ? 1 : 0) * a, a <<= 1; f[d++] = r(p), l = d - 1, h--; break; case 1: for (p = 0, c = Math.pow(2, 16), a = 1; a != c;)u = A.val & A.position, A.position >>= 1, 0 == A.position && (A.position = n, A.val = e(A.index++)), p |= (u > 0 ? 1 : 0) * a, a <<= 1; f[d++] = r(p), l = d - 1, h--; break; case 2: return w.join("") }if (0 == h && (h = Math.pow(2, m), m++), f[l]) v = f[l]; else { if (l !== d) return null; v = s + s.charAt(0) } w.push(v), f[d++] = s + v.charAt(0), h-- , s = v, 0 == h && (h = Math.pow(2, m), m++) } } }; return i }(); "function" == typeof define && define.amd ? define(function () { return LZString }) : "undefined" != typeof module && null != module && (module.exports = LZString);
-</script>
-
-<script>
-    {% if skip_compress is sameas true %}
-    const data = {{data|tojson}}
-    {% else %}
-    const data = JSON.parse(LZString.decompressFromBase64("{{data}}"))
-    {% endif %}
-    const sample_column = data.sample_column
-    const cov_color = 'rgba(108,117,125,0.2)'
-    // const highlight_color = 'rgb(255,147,0)'
+    const data = {{ data| tojson }}
+    const colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf", "#7CB5EC", "#434348", "#90ED7D", "#F7A35C", "#8085E9", "#F15C80", "#E4D354", "#2B908F", "#F45B5B", "#91E8E1", "#4E79A7", "#F28E2C", "#E15759", "#76B7B2", "#59A14F", "#EDC949", "#AF7AA1", "#FF9DA7", "#9C755F", "#BAB0AB"]
+    const dark2 = ["#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#e6ab02", "#a6761d", "#666666"]
     const cov_layout = {
         title: "",
         margin: { t: 10, b: 40 },
-        height: 600,
+        height: 500,
         xaxis: { title: "Scaled Coverage", showgrid: false, range: [0, 1.5] },
         yaxis: { title: "Proportion of Regions Covered", range: [0, 1.] },
         hovermode: "closest",
@@ -240,34 +234,26 @@
     const scaled_layout = {
         title: "",
         margin: { t: 10, b: 40 },
-        height: 600,
+        height: 500,
         xaxis: { title: "Position", rangeslider: {}, autorange: true, showgrid: false, showlines: false, zeroline: false },
         yaxis: { title: "Scaled Coverage", fixedrange: true, domain: [0, 3], showgrid: true, showticklabels: true, tickvals: [0, 1, 2, 3], zeroline: false },
         hovermode: "closest",
         showlegend: false,
     }
-    var ped = false
-    var cov_traces = []
-    var scaled_traces = []
-    var scatter_point_color = 'rgba(31,120,180,0.5)'
-    var scatter_point_color_light = 'rgba(255,255,255,0.1)'
-    var gene_search_obj
-    var ped_table
+    let ped = false
+    let cov_traces = []
+    let scaled_traces = []
+    let gene_search_obj
+    let ped_table = null
 
-    const load_buttons = (arr) => {
-        var btngrp = document.getElementById("chrom_selector");
-        for (var i = 0; i < arr.length; i++) {
-            if (i == 0) {
-                btngrp.insertAdjacentHTML('beforeend', '<label class="btn btn-secondary active" id="chrbtn' + arr[i] + '"><input type="radio" name="options" data-name="' + arr[i] + '" autocomplete="off" id="chrinp' + arr[i] + '" checked="true"> ' + arr[i] + ' </label>')
-            } else {
-                btngrp.insertAdjacentHTML('beforeend', '<label class="btn btn-secondary" id="chrbtn' + arr[i] + '"><input type="radio" name="options" data-name="' + arr[i] + '" autocomplete="off" id="chrinp' + arr[i] + '"> ' + arr[i] + ' </label>')
-            }
+    const sample_colors = (arr) => {
+        let cols = {}
+        for (const [i, sample] of arr.entries()) {
+            cols[sample] = colors[i % colors.length]
         }
-        let chr = $('#chrom_selector input:radio:checked').data('name')
-        build_gene_search()
-        build_cov(chr)
-        build_scaled(chr)
+        return cols
     }
+    const color_map = sample_colors(data.sample_list)
 
     const build_cov = (chr) => {
         // hide the placeholder
@@ -276,7 +262,18 @@
         $('#cov_plot').prop('hidden', false)
         cov_layout.xaxis.range = [0, 1.5]
         cov_layout.yaxis.range = [0, 1.]
-        cov_traces = data["roc"][chr]
+
+        cov_traces = []
+        for (const sample in data.roc[chr]) {
+            cov_traces.push({
+                x: data.roc.x_coords,
+                y: data.roc[chr][sample],
+                hoverinfo: "text",
+                mode: "lines",
+                text: sample,
+                marker: { "color": color_map[sample] }
+            })
+        }
 
         let cov_plot = document.getElementById("cov_plot")
         Plotly.react(cov_plot, cov_traces, cov_layout)
@@ -286,17 +283,145 @@
         cov_plot.on("plotly_doubleclick", handle_plot_doubleclick)
     }
 
-    const build_scaled = (chr, range = false) => {
+    const plot_intervals = (ranges, offset = -0.15) => {
+        let x = []
+        let y = []
+        let text = []
+        let prev = 0
+        let max_offset = offset
+        let y_offset = offset
+        for (const range of ranges) {
+            let [start, end, name] = range
+
+            // overlaps previous gene
+            if (start <= prev) {
+                y_offset -= 0.05
+                if (y_offset < max_offset) {
+                    max_offset = y_offset
+                }
+            } else {
+                y_offset = offset
+            }
+
+            x.push(start)
+            x.push(end)
+            y.push(y_offset)
+            y.push(y_offset)
+            text.push(name)
+            text.push(name)
+
+            // gap
+            x.push("")
+            y.push("")
+            text.push("")
+            prev = end
+        }
+        return {
+            x: x,
+            y: y,
+            text: text,
+            track_depth: max_offset,
+        }
+    }
+
+    const build_scaled = (chr) => {
         // hide the placeholder
         $('#scaled_plot_placeholder').prop('hidden', true)
         // show the plot
         $('#scaled_plot').prop('hidden', false)
+
+        scaled_layout.xaxis.range = []
         scaled_layout.xaxis.autorange = true
-        if (range) {
-            scaled_layout.xaxis.autorange = false
-            scaled_layout.xaxis.range = range
+
+        scaled_traces = []
+        // add the backgrounds
+        for (const idx of [...Array(data[chr]["upper"].length).keys()]) {
+            for (const bound of ["lower", "upper"]) {
+                scaled_traces.push({
+                    x: [...data.shared_coords, ...data[chr].coords],
+                    y: data[chr][bound][idx],
+                    fill: bound == "upper" ? "tonexty" : "none",
+                    fillcolor: "rgba(108,117,125,0.3)",
+                    type: "scatter",
+                    mode: "lines",
+                    hoverinfo: "none",
+                    marker: { "color": "rgba(108,117,125,0.1)" },
+                })
+            }
         }
-        scaled_traces = data[chr]
+
+        // local sample traces
+        for (const sample of data[chr].samples) {
+            scaled_traces.push({
+                x: sample.x,
+                y: sample.y,
+                text: sample.name,
+                connectgaps: false,
+                hoverinfo: "text",
+                mode: "lines",
+                name: "significant",
+                marker: {
+                    width: 1, color: color_map[sample.name]
+                }
+            })
+        }
+
+        // annotation tracks
+        let y_offset = -0.10
+        let track_idx = 0
+        for (const tracktype of Object.keys(data[chr].annotations)) {
+            for (const track of data[chr].annotations[tracktype]) {
+                let trackname = track[0]
+                let track_color = dark2[track_idx % dark2.length]
+                let track_depth = 0
+                if (tracktype == "gff" || tracktype == "bed") {
+                    let intervals = plot_intervals(track[1], y_offset)
+                    track_depth = intervals.track_depth
+                    scaled_traces.push({
+                        x: intervals.x,
+                        y: intervals.y,
+                        text: intervals.text,
+                        type: "scattergl",
+                        name: trackname,
+                        tracktype: tracktype,
+                        connectgaps: false,
+                        showlegend: false,
+                        line: { width: 2, color: track_color },
+                        mode: "lines+markers",
+                        hoverinfo: "text+x+name",
+                        hoverlabel: { namelength: -1 },
+                        marker: {
+                            size: 6,
+                            symbol: "square",
+                            color: track_color,
+                            line: { width: 1, color: "white" },
+                        },
+                    })
+                } else {
+                    scaled_traces.push({
+                        x: track[1].x,
+                        y: Array(track[1].x.length).fill(y_offset),
+                        mode: "markers",
+                        type: "scattergl",
+                        name: trackname,
+                        text: track[1].text.map((i) => {
+                            return i.replaceAll(";", "<br>")
+                        }),
+                        hoverinfo: "text+x+name",
+                        hoverlabel: { namelength: -1 },
+                        marker: {
+                            size: 6,
+                            symbol: "square",
+                            color: track_color,
+                            line: { width: 1, color: "white" },
+                        },
+                        tracktype: tracktype,
+                    })
+                }
+                y_offset = track_depth - 0.10
+                track_idx += 1
+            }
+        }
 
         let scaled_plot = document.getElementById("scaled_plot")
         Plotly.react(scaled_plot, scaled_traces, scaled_layout)
@@ -315,8 +440,14 @@
         ped_table.button('.buttons-copy').trigger()
     }
 
+    const reset_button_click = () => {
+        build_scatter_plots()
+        reset_datatable()
+    }
+
     const build_table = () => {
         if ("ped" in data) {
+            $("#table-wrapper").removeClass("d-none")
             ped_table = $("#ped_table").DataTable({
                 data: data.ped.slice(1),
                 columns: data.ped[0],
@@ -344,19 +475,31 @@
                         msg = `${iTotal} records`
                     }
                     return `
-                <span class="datatable-info">
-                    <span class="pr-3">${msg}</span>
-
-                    <span class="btn-group input-group-sm" data-toggle="buttons">
-                        <span class="input-group-prepend">
-                            <span class="input-group-text">Export:</span>
+                        <span class="datatable-info">
+                            <div class="input-group flex-nowrap input-group-sm">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text msg">${msg}</span>
+                                </div>
+                                <div class="input-group-append d-none" id="reset-button-wrapper">
+                                    <button type="button" class="btn btn-outline-primary" onclick="reset_button_click()">Reset</button>
+                                </div>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-outline-primary" id="csv-button" onclick="csv_button_click()">CSV</button>
+                                </div>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-outline-primary" id="copy-button" onclick="copy_button_click()">Copy</button>
+                                </div>
+                            </div>
                         </span>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="csv_button_click()">CSV</button>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="copy_button_click()">Copy</button>
-                    </span>
-                </span>
-                `
+                    `
                 },
+                drawCallback: (settings) => {
+                    if (settings.fnRecordsTotal() < data.sample_list.length) {
+                        $("#reset-button-wrapper").removeClass("d-none")
+                    } else {
+                        $("#reset-button-wrapper").addClass("d-none")
+                    }
+                }
             })
 
             // track if we actually have a table rendered
@@ -371,7 +514,7 @@
                     else {
                         ped_table.$('tr.selected').removeClass('selected')
                         $(this).addClass('selected')
-                        let sample_id = ped_table.rows('.selected').data()[0][sample_column]
+                        let sample_id = ped_table.rows('.selected').data()[0][data.sample_column]
                         highlight_plot_traces(sample_id)
                     }
                 })
@@ -388,7 +531,7 @@
             text: text,
             hovertext: hover,
             hoverinfo: 'text',
-            marker: { size: 12, color: colors, line: { color: 'rgb(40,40,40)', width: 1 } },
+            marker: { size: 8, color: colors, line: { color: 'rgb(40,40,40)', width: 1 } },
         }
     }
 
@@ -396,7 +539,7 @@
         let el = document.getElementById(div)
         Plotly.react(el, [data], {
             margin: { t: 15, },
-            height: 400,
+            height: 300,
             xaxis: { title: x_label },
             yaxis: { title: y_label },
             hovermode: "closest",
@@ -406,7 +549,10 @@
         el.removeAllListeners("plotly_selected")
         el.removeAllListeners("plotly_deselect")
         el.on("plotly_selected", handle_scatter_selection)
-        el.on("plotly_deselect", build_scatter_plots)
+        el.on("plotly_deselect", () => {
+            build_scatter_plots()
+            reset_datatable()
+        })
     }
 
     const build_scatter_plots = () => {
@@ -459,10 +605,10 @@
                 'beforeend',
                 `<div class="row border-bottom">
                 <div class="col-6">
-                    <h4>PCA 1 vs 2</h4>
+                    <h5>PCA 1 vs 2</h5>
                 </div>
                 <div class="col-6">
-                    <h4>PCA 1 vs 3</h4>
+                    <h5>PCA 1 vs 3</h5>
                 </div>
             </div>
             <div class="row">
@@ -475,24 +621,19 @@
         build_scatter_plots()
     }
 
-    $('#chrom_selector').on("change", () => {
-        // $('#tab_names a[href="#scaled"]').tab('show')
-        let chr = $('#chrom_selector input:radio:checked').data('name')
+    $('#region-select').on("change", () => {
+        let chr = $('#region-select').find(':selected')[0].text
         let sample_id
-        if ("genes" in data) {
+
+        try {
             gene_search_obj.clear()
+        }
+        catch (err) {
         }
         $("#scaled_plot").addClass("disabled_div")
         if (ped) {
-            let tables = $('.dataTable').DataTable()
-            let table = tables.table('#ped_table')
-            // remove all filters and reset table
-            // table.search('').columns().search('').draw()
-            // de-select all rows
-            // table.$('tr.selected').removeClass('selected')
-            table_data = table.rows('.selected').data()
-            if (table_data.length == 1) {
-                sample_id = table_data[0][sample_column]
+            if (ped_table.rows(".selected").data().length == 1) {
+                sample_id = ped_table.rows(".selected").data()[0][data.sample_column]
             }
         }
         build_cov(chr)
@@ -503,25 +644,27 @@
     })
 
     const search_datatable = (sample_id) => {
-        let tables = $('.dataTable').DataTable()
-        let table = tables.table('#ped_table')
         // remove selection
-        table.$('tr.selected').removeClass('selected')
+        ped_table.$('tr.selected').removeClass('selected')
         // run the search
-        table.search(sample_id).draw()
+        ped_table.search(sample_id).draw()
         // highlight the selected sample within the search results
-        table.rows().every(function (row_index, table_loop, row_loop) {
-            if (sample_id == this.data()[sample_column]) {
-                table.rows([row_index]).nodes().to$().addClass('selected')
+        ped_table.rows().every(function (row_index, table_loop, row_loop) {
+            if (sample_id == this.data()[data.sample_column]) {
+                ped_table.rows([row_index]).nodes().to$().addClass('selected')
             }
         })
     }
 
     const reset_datatable = () => {
-        let tables = $('.dataTable').DataTable()
-        let table = tables.table('#ped_table')
-        table.$('tr.selected').removeClass('selected')
-        table.search('').columns().search('').draw()
+        // remove selection
+        ped_table.$('tr.selected').removeClass('selected')
+        // remove search
+        ped_table.search('').columns().search('') //.draw()
+        // reset all table data
+        ped_table.clear()
+        ped_table.rows.add(data.ped.slice(1))
+        ped_table.draw()
     }
 
     const handle_plot_click = (click_data) => {
@@ -552,13 +695,13 @@
         if (event === undefined) {
             return
         }
-        var sample_ids = event.points.map(point => point.text)
-        var colors = []
-        for (var i = 0; i < data.depth.bins.samples.length; i++) {
-            colors.push(scatter_point_color_light)
+        let selected_sample_ids = event.points.map(point => point.text)
+        let colors = []
+        for (let i = 0; i < data.depth.bins.samples.length; i++) {
+            colors.push('rgba(255,255,255,0.1)')
         }
         event.points.forEach((pt) => {
-            colors[pt.pointNumber] = scatter_point_color
+            colors[pt.pointNumber] = 'rgba(31,120,180,0.5)'
         })
 
         Plotly.restyle('inferred_sex', 'marker.color', [colors])
@@ -567,15 +710,25 @@
             Plotly.restyle('pca_1', 'marker.color', [colors])
             Plotly.restyle('pca_2', 'marker.color', [colors])
         }
+
+        // subset table based on selection
+        let table = []
+        for (const row of data.ped.slice(1)) {
+            if (selected_sample_ids.includes(row[data.sample_column])) {
+                table.push(row)
+            }
+        }
+        ped_table.clear()
+        ped_table.rows.add(table)
+        ped_table.draw()
     }
 
     const reset_line_plots = () => {
         scaled_layout.xaxis.autorange = true
-        // de-select scaled plot
         Plotly.react("scaled_plot", scaled_traces, scaled_layout)
+
         cov_layout.xaxis.range = [0, 1.5]
         cov_layout.yaxis.range = [0, 1.]
-        // de-select cov plot
         Plotly.react("cov_plot", cov_traces, cov_layout)
     }
 
@@ -599,7 +752,7 @@
             if (trace.name == "significant") {
                 // de-prioritize; gray
                 if (trace.text != sample_id) {
-                    trace.marker.color = cov_color
+                    trace.marker.color = 'rgba(108,117,125,0.2)'
                 }
                 else {
                     highlight_color = scaled_traces[i].marker.color
@@ -610,7 +763,7 @@
         for (var i = 0; i < cov_traces.length; i++) {
             let trace = $.extend(true, {}, cov_traces[i])
             if (trace.text != sample_id) {
-                trace.marker.color = cov_color
+                trace.marker.color = 'rgba(108,117,125,0.2)'
             } else {
                 trace.marker.color = highlight_color
             }
@@ -621,7 +774,30 @@
     }
 
     const build_gene_search = () => {
-        if ("genes" in data) {
+        // grab the genes and their coords from gffs
+        let genes = []
+        let seen = new Set()
+
+        for (const chr of data.chromosomes) {
+            if ("gff" in data[chr].annotations) {
+                for (const gff of data[chr].annotations.gff) {
+                    let filename = gff[0]
+                    let gene_data = gff[1]
+                    for (const gene of gene_data) {
+                        let [start, end, name] = gene
+                        if (!(name in seen)) {
+                            seen.add(name)
+                            genes.push({
+                                n: name,
+                                v: [chr, start, end]
+                            })
+                        }
+                    }
+                }
+            }
+        }
+
+        if (genes.length > 0) {
 
             // re-organize the buttons and show the search field
             // $('#chrom_selector_div').removeClass('col-12').addClass('col-10')
@@ -633,10 +809,10 @@
                 valueField: 'v',
                 labelField: 'n',
                 searchField: 'n',
-                options: data['genes'],
+                options: genes,
                 placeholder: 'Gene ID',
                 mode: 'single',
-                closeAfterSelect: false,
+                closeAfterSelect: true,
                 maxItems: 1,
                 maxOptions: 20,
             })
@@ -649,38 +825,103 @@
     }
 
     const update_scaled_range = (coords) => {
+        // change event can occur on clear
         if (!coords) {
             return
         }
 
         coords = coords.split(',')
-        let chrom = coords[0]
-        let padding = 100000
-        let start = parseInt(coords[1]) - padding
-        let end = parseInt(coords[2]) + padding
-
-        let current_chr = $('#chrom_selector input:radio:checked').data('name')
-
-        if (current_chr != chrom) {
-            // change the button
-            $("#chrbtn" + current_chr).removeClass('active')
-            $("#chrinp" + current_chr).prop('checked', false)
-            $("#chrbtn" + chrom).addClass('active')
-            $("#chrinp" + chrom).prop('checked', true)
-
-            // temp disable
-            $("#scaled_plot").addClass("disabled_div")
-
-            // change both plots to currently selected chromosome
-            build_cov(chrom)
+        let chr = coords[0]
+        let start = parseInt(coords[1])
+        let end = parseInt(coords[2])
+        let padding = (end - start) / 2
+        let selected_chr = $('#region-select').find(':selected')[0].text
+        if (selected_chr != chr) {
+            $("#region-select").val(chr)
+            // triggers redraw on new chromosome
+            $("#region-select").trigger('change')
         }
 
         // zoom the scaled plot
-        build_scaled(chrom, [start, end])
+        scaled_layout.xaxis.range = [start - padding, end + padding]
+        scaled_layout.xaxis.autorange = false
+        Plotly.relayout("scaled_plot", scaled_layout)
+        gene_search_obj.clear()
+    }
+
+    $("#region-select").select2({
+        // data: data.chromosomes.map((e, i) => {
+        //     return {id: i, text: e}
+        // }),
+        data: data.chromosomes.map(i => {
+            return { id: i, text: i }
+        }),
+        selectOnClose: true,
+        width: 140,
+        theme: 'bootstrap4',
+    })
+
+    $("#global-qc-link").on("click", () => {
+        $("#chromosome-ux-form").addClass('d-none')
+    })
+
+    $("#chrom-cov-link").on("click", () => {
+        $("#chromosome-ux-form").removeClass('d-none')
+    })
+
+    $("#btn-previous").click(function () {
+        next_region(-1)
+    })
+
+    $("#btn-next").click(function () {
+        next_region()
+    })
+
+    document.addEventListener("keydown", function (e) {
+        // allow cursor nav inside input elements
+        if (document.activeElement.tagName.toLowerCase() == "input") {
+            return
+        }
+        if (e.which == 37) {
+            next_region(-1)
+        } else if (e.which == 39) {
+            next_region()
+        } else {
+            return
+        }
+    })
+
+    const next_region = (offset = 1) => {
+        let chr = $('#region-select').find(':selected')[0].text
+        let selected_index = data.chromosomes.indexOf(chr)
+        let next_index
+        // previous
+        if (offset == -1) {
+            if (selected_index == 0) {
+                next_index = data.chromosomes.length - 1
+            } else {
+                next_index = selected_index - 1
+            }
+        } else {
+            if (selected_index == data.chromosomes.length - 1) {
+                next_index = 0
+            } else {
+                next_index = selected_index + 1
+            }
+        }
+        chr = data.chromosomes[next_index]
+        $("#region-select").val(chr)
+        $("#region-select").trigger("change")
     }
 
     $(document).ready(function () {
-        load_buttons(data.chromosomes)
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        })
+        let chr = $('#region-select').find(':selected')[0].text
+        build_gene_search()
+        build_cov(chr)
+        build_scaled(chr)
         build_table()
         build_global_qc()
     })
