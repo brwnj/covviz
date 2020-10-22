@@ -18,7 +18,7 @@ task run_indexcov {
         cpu: 1
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 2
-        docker: "brwnj/covviz:v1.2.1"
+        docker: "brwnj/covviz:v1.3.0"
     }
     output {
         Array[File] indexcov_pngs = glob("${project}/${project}-indexcov-*.png")
@@ -62,7 +62,7 @@ task run_covviz {
         cpu: 1
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 2
-        docker: "brwnj/covviz:v1.2.1"
+        docker: "brwnj/covviz:v1.3.0"
     }
     output {
         File covviz_report = "covviz_report.html"
