@@ -198,8 +198,3 @@ Double-clicking de-selects lines, resets the plot, and de-selects
 samples from the table. Clicking on the gene track launches a search
 for the gene's respective Gene Card. In cases where genes overlap,
 multiple windows/tabs will be opened.
-
-# License
-
-covviz is free and unrestricted for non-commercial use. For commercial use,
-please contact [bpedersen@base2genomics.com].
