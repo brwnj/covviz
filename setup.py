@@ -18,10 +18,10 @@ URL = "https://github.com/brwnj/covviz"
 EMAIL = "brwnjm@gmail.com"
 AUTHOR = "Joe Brown"
 REQUIRES_PYTHON = ">=3.6.0"
-VERSION = "1.2.2"
+VERSION = "1.3.0"
 
 # What packages are required for this module to be executed?
-REQUIRED = ["Jinja2", "lzstring", "numpy", "pandas"]
+REQUIRED = ["Jinja2", "numpy", "pandas"]
 
 # What packages are optional?
 EXTRAS = {
