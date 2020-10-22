@@ -37,6 +37,12 @@ dependency is Java 8 or later, then you run:
 curl -s https://get.nextflow.io | bash
 ```
 
+Or via [Bioconda](https://bioconda.github.io/recipes/nextflow/README.html) using:
+
+```
+conda install -c bioconda nextflow
+```
+
 Full nextflow installation instructions are available at:
 https://www.nextflow.io/
 
