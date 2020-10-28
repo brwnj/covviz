@@ -1,5 +1,6 @@
 import csv
 import logging
+import warnings
 import os
 import sys
 from collections import defaultdict
@@ -164,8 +165,7 @@ def parse_sex_groups(filename, sample_col, sex_col):
             groups[row[sex_col]].append(row[sample_col])
     return groups
 
-
-def normalize_depths(path):
+def normalize_depths(path, sex_chroms, median_window=7):
     filename, ext = os.path.splitext(path)
     if ext == ".gz":
         filename, ext = os.path.splitext(filename)
@@ -176,10 +176,36 @@ def normalize_depths(path):
     df[df.iloc[:, 3:] == 0] = np.nan
     # median values per sample
     global_sample_median = np.nanmedian(df.iloc[:, 3:], axis=0)
-    # normalize each sample
+    # normalize within each sample
     df.iloc[:, 3:] = df.iloc[:, 3:] / global_sample_median
-    # generate output file
-    df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0.0, index=False)
+
+    extras = []
+    for s in sex_chroms:
+        if s.startswith("chr"): extras.append(s[3:])
+        else: extras.append("chr" + s)
+    sex_chroms = sex_chroms + extras
+
+    # median per site
+    autosome = ~np.asarray(df.iloc[:, 0].isin(sex_chroms))
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
+        site_median = np.nanmedian(df.iloc[:, 3:], axis=1)
+
+    with np.errstate(invalid='ignore'):
+        site_median[np.isnan(site_median) | (site_median < 0.03)] = 1
+    # divide autosomes by median at each site so a given block is centered at
+    # middle sample.
+    for i in range(3, df.shape[1]):
+        df.iloc[:, i] = np.where(autosome, df.iloc[:, i] / site_median, df.iloc[:, i])
+        if median_window > 1:
+            df.iloc[:, i] = df.iloc[:, i].rolling(median_window).median() #pd.rolling_median(df.iloc[:, i], median_window)
+        inan = np.asarray(np.isnan(df.iloc[:, i]))
+        df.iloc[inan, i] = 0.0
+    df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0.0, index=False,
+            compression='gzip',
+            float_format="%.2f")
+    #return df
     return output_bed
 
 
@@ -241,6 +267,7 @@ def parse_bed(
     slop=500000,
     min_samples=8,
     skip_norm=False,
+    window=1
 ):
     bed_traces = dict()
     # chromosomes, in order of appearance
@@ -254,13 +281,17 @@ def parse_bed(
         groups = parse_sex_groups(ped, sample_col, sex_col)
 
     if not skip_norm:
-        path = normalize_depths(path)
+        path = normalize_depths(path, sex_chroms, median_window=window)
+    #else:
+    #    df = pd.read_csv(path, sep="\t", low_memory=False)
 
     with gzopen(path) as fh:
         header = fh.readline().strip().split("\t")
         fh.seek(0)
         reader = csv.DictReader(fh, delimiter="\t")
+        samples = header[3:]
         for chr, entries in groupby(reader, key=lambda i: i[header[0]]):
+
             # apply exclusions
             if exclude.findall(chr):
                 logger.debug("excluding chromosome: %s" % chr)
@@ -276,10 +307,14 @@ def parse_bed(
             sample_groups = None
             if chrom in sex_chroms and groups:
                 sample_groups = groups
+            if sample_groups is None:
+                sample_groups = {"gid": samples}
 
+            #for x_index, row in entries.iterrows():
             for x_index, row in enumerate(entries):
                 if not samples:
                     samples = [i for i in sorted(row.keys()) if i not in header[:3]]
+
                     if groups:
                         valid = validate_samples(samples, groups)
                         if not valid:
@@ -287,8 +322,6 @@ def parse_bed(
                                 "sample ID mismatches exist between ped and bed"
                             )
                             sys.exit(1)
-                if sample_groups is None:
-                    sample_groups = {"gid": samples}
 
                 x_value = int(row[header[1]])
                 data["x"].append(x_value)
@@ -302,9 +335,7 @@ def parse_bed(
                         bounds["lower"].append([])
                     sample_values = []
                     for sample in samples_of_group:
-                        v = float(row[sample])
-                        if v > 3:
-                            v = 3
+                        v = min(3.0, float(row[sample]))
                         data[sample].append(v)
                         sample_values.append(v)
 

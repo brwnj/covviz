@@ -98,6 +98,13 @@ def parse_args():
         "-o", "--output", default="covviz_report.html", help="output file path"
     )
     p.add_argument(
+        "-w",
+        "--window",
+        default=7,
+        type=int,
+        help="smoothing window within a sample.",
+    )
+    p.add_argument(
         "--skip-norm",
         action="store_true",
         help=(
@@ -209,6 +216,7 @@ def cli():
         args.slop,
         args.min_samples,
         args.skip_norm,
+        args.window,
     )
 
     traces = optimize_coords(traces)
