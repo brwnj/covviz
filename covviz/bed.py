@@ -97,8 +97,10 @@ def get_traces(data, samples, outliers, distance_threshold, slop):
                         traces[sample]["y"].insert(
                             0, data[sample][index_values[0] - distance_idx]
                         )
-                    except IndexError:
+                    except IndexError as e:
                         # x_values[0] is the first data point
+                        print("index error: %s\nindex_values[0]: %d, distance_idx: %d" % (
+                            e, index_values[0], distance_idx))
                         break
                     extension_length -= (
                         data["x"][index_values[0] - distance_idx + 1]
@@ -202,24 +204,24 @@ def normalize_depths(path, sex_chroms, median_window=7):
             df.iloc[:, i] = df.iloc[:, i].rolling(median_window).median() #pd.rolling_median(df.iloc[:, i], median_window)
         inan = np.asarray(np.isnan(df.iloc[:, i]))
         df.iloc[inan, i] = 0.0
-    df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0.0, index=False,
-            compression='gzip',
-            float_format="%.2f")
-    #return df
-    return output_bed
-
+    #df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0.0, index=False,
+    #        compression='gzip',
+    #        float_format="%.2f")
+    return df
+    #return output_bed
 
 def identify_outliers(a, threshold=3.5):
+    a = np.asarray(a, dtype=np.float32)
     med = np.median(a)
-    mad = np.median([np.abs(i - med) for i in a])
+    mad = np.median(np.abs(a - med))
     # https://www.ibm.com/support/knowledgecenter/en/SSEP7J_11.1.0/com.ibm.swg.ba.cognos.ug_ca_dshb.doc/modified_z.html
     if mad == 0:
         meanAD = np.mean(np.abs(a - np.mean(a)))
         divisor = 1.253314 * meanAD
-        modified_z_scores = [(i - med) / divisor for i in a]
+        modified_z_scores = (a - med) / divisor
     else:
         divisor = 1.4826 * mad
-        modified_z_scores = [(i - med) / divisor for i in a]
+        modified_z_scores = (a - med) / divisor
     return np.where(np.abs(modified_z_scores) > threshold)
 
 
@@ -272,7 +274,6 @@ def parse_bed(
     bed_traces = dict()
     # chromosomes, in order of appearance
     chroms = list()
-    samples = list()
 
     sex_chroms = [i.strip("chr") for i in sex_chroms.split(",")]
 
@@ -280,17 +281,22 @@ def parse_bed(
     if ped:
         groups = parse_sex_groups(ped, sample_col, sex_col)
 
-    if not skip_norm:
-        path = normalize_depths(path, sex_chroms, median_window=window)
-    #else:
-    #    df = pd.read_csv(path, sep="\t", low_memory=False)
+    if skip_norm:
+        df = pd.read_csv(path, sep="\t", low_memory=False)
+    else:
+        df = normalize_depths(path, sex_chroms, median_window=window)
 
-    with gzopen(path) as fh:
-        header = fh.readline().strip().split("\t")
-        fh.seek(0)
-        reader = csv.DictReader(fh, delimiter="\t")
+    if True: # temporary to get sane diff.
+        header = list(df.columns)
         samples = header[3:]
-        for chr, entries in groupby(reader, key=lambda i: i[header[0]]):
+        if groups:
+            valid = validate_samples(samples, groups)
+            if not valid:
+                logger.critical(
+                    "sample ID mismatches exist between ped and bed"
+                )
+                sys.exit(1)
+        for chr, entries in df.groupby(header[0], as_index=False, sort=False):
 
             # apply exclusions
             if exclude.findall(chr):
@@ -307,21 +313,15 @@ def parse_bed(
             sample_groups = None
             if chrom in sex_chroms and groups:
                 sample_groups = groups
+
+            all_points = sample_groups is None
+
             if sample_groups is None:
                 sample_groups = {"gid": samples}
 
-            #for x_index, row in entries.iterrows():
-            for x_index, row in enumerate(entries):
-                if not samples:
-                    samples = [i for i in sorted(row.keys()) if i not in header[:3]]
-
-                    if groups:
-                        valid = validate_samples(samples, groups)
-                        if not valid:
-                            logger.critical(
-                                "sample ID mismatches exist between ped and bed"
-                            )
-                            sys.exit(1)
+            x_index = -1
+            for not_x_index, row in entries.iterrows():
+                x_index += 1
 
                 x_value = int(row[header[1]])
                 data["x"].append(x_value)
@@ -333,11 +333,17 @@ def parse_bed(
                     if len(bounds["upper"]) == group_index:
                         bounds["upper"].append([])
                         bounds["lower"].append([])
-                    sample_values = []
-                    for sample in samples_of_group:
-                        v = min(3.0, float(row[sample]))
-                        data[sample].append(v)
-                        sample_values.append(v)
+                    if all_points:
+                        sample_values = np.minimum(3, np.asarray(row[3:],
+                            dtype=np.float32))
+                        for i, s in enumerate(samples):
+                            data[s].append(float(sample_values[i]))
+                    else:
+                        sample_values = []
+                        for sample in samples_of_group:
+                            v = min(3.0, float(row[sample]))
+                            data[sample].append(v)
+                            sample_values.append(v)
 
                     # skip finding outliers for few samples
                     if len(samples) <= min_samples:
@@ -350,17 +356,21 @@ def parse_bed(
 
                     # skip running test if everything is the same
                     if len(set(sample_values)) == 1:
-                        bounds["upper"][group_index].append(sample_values[0])
-                        bounds["lower"][group_index].append(sample_values[0])
+                        bounds["upper"][group_index].append(float(sample_values[0]))
+                        bounds["lower"][group_index].append(float(sample_values[0]))
                     else:
                         # indexes of passing values
                         passing = identify_outliers(sample_values, z_threshold)[0]
                         # remove those indexes from the list
+                        # sometimes we get a list (x, y) for others we get a
+                        # numpy array
+                        if len(passing) > 0 and not isinstance(sample_values, list):
+                            sample_values = sample_values.tolist()
                         for j in sorted(passing, reverse=True):
                             sample_values.pop(j)
                         # from remaining, grab upper and lower bounds
-                        upper = max(sample_values)
-                        lower = min(sample_values)
+                        upper = float(max(sample_values))
+                        lower = float(min(sample_values))
                         bounds["upper"][group_index].append(upper)
                         bounds["lower"][group_index].append(lower)
                         required_deviation_from_bounds = 0.3
