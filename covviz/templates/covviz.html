@@ -236,7 +236,15 @@
         margin: { t: 10, b: 40 },
         height: 500,
         xaxis: { title: "Position", rangeslider: {}, autorange: true, showgrid: false, showlines: false, zeroline: false },
-        yaxis: { title: "Scaled Coverage", fixedrange: true, domain: [0, 3], showgrid: true, showticklabels: true, tickvals: [0, 1, 2, 3], zeroline: false },
+        yaxis: {
+            title: "Scaled Coverage",
+            fixedrange: true,
+            domain: [0, 3],
+            tickvals: [0, 0.5, 1, 1.5, 2, 2.5, 3],
+            showgrid: true,
+            showticklabels: true,
+            zeroline: false
+        },
         hovermode: "closest",
         showlegend: false,
     }
