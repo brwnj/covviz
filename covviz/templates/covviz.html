@@ -236,7 +236,15 @@
         margin: { t: 10, b: 40 },
         height: 500,
         xaxis: { title: "Position", rangeslider: {}, autorange: true, showgrid: false, showlines: false, zeroline: false },
-        yaxis: { title: "Scaled Coverage", fixedrange: true, domain: [0, 3], showgrid: true, showticklabels: true, tickvals: [0, 1, 2, 3], zeroline: false },
+        yaxis: {
+            title: "Scaled Coverage",
+            fixedrange: true,
+            domain: [0, 3],
+            tickvals: [0, 0.5, 1, 1.5, 2, 2.5, 3],
+            showgrid: true,
+            showticklabels: true,
+            zeroline: false
+        },
         hovermode: "closest",
         showlegend: false,
     }
@@ -254,6 +262,46 @@
         return cols
     }
     const color_map = sample_colors(data.sample_list)
+
+    // https://stackoverflow.com/a/4198132
+    const get_hash_params = (h = false) => {
+
+        let hash_params = {}
+        let e,
+            a = /\+/g,  // Regex for replacing addition symbol with a space
+            r = /([^&;=]+)=?([^&;]*)/g,
+            d = (s) => { return decodeURIComponent(s.replace(a, " ")); },
+            q = h ? h : window.location.hash.substring(1)
+
+        while (e = r.exec(q))
+            hash_params[d(e[1])] = d(e[2])
+
+        return hash_params
+    }
+
+    const set_hash_params = (obj) => {
+        let old = get_hash_params()
+        for (let k in obj) {
+            if (obj[k] == null) {
+                delete old[k]
+            } else {
+                old[k] = obj[k]
+            }
+        }
+        let str = "#"
+        for (let k in old) {
+            str += `${k}=${old[k]}&`
+        }
+
+        window.location.hash = str.slice(0, -1) // drop final '&'
+        return old
+    }
+
+    // not currently listening for these events
+    // window.onhashchange = (event) => {
+    //     let old_hp = get_hash_params(new URL(event.oldURL).hash.substring(1))
+    //     let new_hp = get_hash_params()
+    // }
 
     const build_cov = (chr) => {
         // hide the placeholder
@@ -424,12 +472,15 @@
         }
 
         let scaled_plot = document.getElementById("scaled_plot")
-        Plotly.react(scaled_plot, scaled_traces, scaled_layout)
+        let p = Plotly.react(scaled_plot, scaled_traces, scaled_layout)
         scaled_plot.removeAllListeners("plotly_click")
         scaled_plot.removeAllListeners("plotly_doubleclick")
+        scaled_plot.removeAllListeners("plotly_relayout")
         scaled_plot.on("plotly_click", handle_plot_click)
         scaled_plot.on("plotly_doubleclick", handle_plot_doubleclick)
+        scaled_plot.on("plotly_relayout", handle_zoom_event)
         $("#scaled_plot").removeClass("disabled_div")
+        return p
     }
 
     const csv_button_click = () => {
@@ -623,6 +674,7 @@
 
     $('#region-select').on("change", () => {
         let chr = $('#region-select').find(':selected')[0].text
+        set_hash_params({chr:chr, loc:null})
         let sample_id
 
         try {
@@ -725,7 +777,7 @@
 
     const reset_line_plots = () => {
         scaled_layout.xaxis.autorange = true
-        Plotly.react("scaled_plot", scaled_traces, scaled_layout)
+        Plotly.react("scaled_plot", scaled_traces, scaled_layout).then(() => {set_hash_params({loc:null})})
 
         cov_layout.xaxis.range = [0, 1.5]
         cov_layout.yaxis.range = [0, 1.]
@@ -738,6 +790,24 @@
         if ("ped" in data) {
             reset_datatable()
         }
+    }
+
+    const get_selected_range = () => {
+        let p = document.getElementById("scaled_plot")
+        let start = p.layout.xaxis.range[0] < 0 ? 0 : Math.round(p.layout.xaxis.range[0])
+        let end = Math.round(p.layout.xaxis.range[1])
+        return [start, end]
+    }
+
+    const zoom_scaled_plot = (start, end) => {
+        scaled_layout.xaxis.range = [start, end]
+        scaled_layout.xaxis.autorange = false
+        Plotly.relayout("scaled_plot", scaled_layout)
+    }
+
+    const handle_zoom_event = () => {
+        let [start, end] = get_selected_range()
+        set_hash_params({loc:`${start}-${end}`})
     }
 
     const highlight_plot_traces = (sample_id) => {
@@ -827,6 +897,7 @@
     const update_scaled_range = (coords) => {
         // change event can occur on clear
         if (!coords) {
+            set_hash_params({loc: null})
             return
         }
 
@@ -850,10 +921,13 @@
     }
 
     $("#region-select").select2({
-        // data: data.chromosomes.map((e, i) => {
-        //     return {id: i, text: e}
-        // }),
         data: data.chromosomes.map(i => {
+            let p = get_hash_params()
+            if ("chr" in p) {
+                if (p.chr == i) {
+                    return { id: i, text: i, selected: true}
+                }
+            }
             return { id: i, text: i }
         }),
         selectOnClose: true,
@@ -918,10 +992,23 @@
         $(function () {
             $('[data-toggle="tooltip"]').tooltip()
         })
+
+        let p = get_hash_params()
         let chr = $('#region-select').find(':selected')[0].text
+
         build_gene_search()
         build_cov(chr)
-        build_scaled(chr)
+        build_scaled(chr).then(() => {
+            if ("loc" in p) {
+                try {
+                    let coords = p.loc.split("-")
+                    zoom_scaled_plot(parseInt(coords[0]), parseInt(coords[1]))
+                }
+                catch {
+                    console.log("invalid loc:", p.loc)
+                }
+            }
+        })
         build_table()
         build_global_qc()
     })
