@@ -1,8 +1,8 @@
 import csv
 import logging
-import warnings
 import os
 import sys
+import warnings
 from collections import defaultdict
 from itertools import groupby
 
@@ -99,8 +99,10 @@ def get_traces(data, samples, outliers, distance_threshold, slop):
                         )
                     except IndexError as e:
                         # x_values[0] is the first data point
-                        print("index error: %s\nindex_values[0]: %d, distance_idx: %d" % (
-                            e, index_values[0], distance_idx))
+                        print(
+                            "index error: %s\nindex_values[0]: %d, distance_idx: %d"
+                            % (e, index_values[0], distance_idx)
+                        )
                         break
                     extension_length -= (
                         data["x"][index_values[0] - distance_idx + 1]
@@ -167,6 +169,7 @@ def parse_sex_groups(filename, sample_col, sex_col):
             groups[row[sex_col]].append(row[sample_col])
     return groups
 
+
 def normalize_depths(path, sex_chroms, median_window=7):
     filename, ext = os.path.splitext(path)
     if ext == ".gz":
@@ -183,32 +186,37 @@ def normalize_depths(path, sex_chroms, median_window=7):
 
     extras = []
     for s in sex_chroms:
-        if s.startswith("chr"): extras.append(s[3:])
-        else: extras.append("chr" + s)
+        if s.startswith("chr"):
+            extras.append(s[3:])
+        else:
+            extras.append("chr" + s)
     sex_chroms = sex_chroms + extras
 
     # median per site
     autosome = ~np.asarray(df.iloc[:, 0].isin(sex_chroms))
 
     with warnings.catch_warnings():
-        warnings.filterwarnings('ignore', r'All-NaN (slice|axis) encountered')
+        warnings.filterwarnings("ignore", r"All-NaN (slice|axis) encountered")
         site_median = np.nanmedian(df.iloc[:, 3:], axis=1)
 
-    with np.errstate(invalid='ignore'):
+    with np.errstate(invalid="ignore"):
         site_median[np.isnan(site_median) | (site_median < 0.03)] = 1
     # divide autosomes by median at each site so a given block is centered at
     # middle sample.
     for i in range(3, df.shape[1]):
         df.iloc[:, i] = np.where(autosome, df.iloc[:, i] / site_median, df.iloc[:, i])
         if median_window > 1:
-            df.iloc[:, i] = df.iloc[:, i].rolling(median_window).median() #pd.rolling_median(df.iloc[:, i], median_window)
+            df.iloc[:, i] = (
+                df.iloc[:, i].rolling(median_window).median()
+            )  # pd.rolling_median(df.iloc[:, i], median_window)
         inan = np.asarray(np.isnan(df.iloc[:, i]))
         df.iloc[inan, i] = 0.0
-    #df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0.0, index=False,
+    # df.to_csv(path_or_buf=output_bed, sep="\t", na_rep=0.0, index=False,
     #        compression='gzip',
     #        float_format="%.2f")
     return df
-    #return output_bed
+    # return output_bed
+
 
 def identify_outliers(a, threshold=3.5):
     a = np.asarray(a, dtype=np.float32)
@@ -269,7 +277,7 @@ def parse_bed(
     slop=500000,
     min_samples=8,
     skip_norm=False,
-    window=1
+    window=1,
 ):
     bed_traces = dict()
     # chromosomes, in order of appearance
@@ -286,15 +294,13 @@ def parse_bed(
     else:
         df = normalize_depths(path, sex_chroms, median_window=window)
 
-    if True: # temporary to get sane diff.
+    if True:  # temporary to get sane diff.
         header = list(df.columns)
         samples = header[3:]
         if groups:
             valid = validate_samples(samples, groups)
             if not valid:
-                logger.critical(
-                    "sample ID mismatches exist between ped and bed"
-                )
+                logger.critical("sample ID mismatches exist between ped and bed")
                 sys.exit(1)
         for chr, entries in df.groupby(header[0], as_index=False, sort=False):
 
@@ -334,8 +340,9 @@ def parse_bed(
                         bounds["upper"].append([])
                         bounds["lower"].append([])
                     if all_points:
-                        sample_values = np.minimum(3, np.asarray(row[3:],
-                            dtype=np.float32))
+                        sample_values = np.minimum(
+                            3, np.asarray(row[3:], dtype=np.float32)
+                        )
                         for i, s in enumerate(samples):
                             data[s].append(float(sample_values[i]))
                     else:

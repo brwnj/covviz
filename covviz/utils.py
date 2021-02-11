@@ -17,7 +17,11 @@ def compare_array(a, b):
         b = np.pad(b, (0, len_a - len_b), mode="constant")
     elif len_b > len_a:
         a = np.pad(a, (0, len_b - len_a), mode="constant")
-    return a[: np.nonzero(a != b)[0][0]]
+    try:
+        return a[: np.nonzero(a != b)[0][0]]
+    except IndexError:
+        # case: a == b
+        return a
 
 
 def find_common_start(items):

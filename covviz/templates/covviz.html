@@ -417,57 +417,60 @@
         // annotation tracks
         let y_offset = -0.10
         let track_idx = 0
-        for (const tracktype of Object.keys(data[chr].annotations)) {
-            for (const track of data[chr].annotations[tracktype]) {
-                let trackname = track[0]
-                let track_color = dark2[track_idx % dark2.length]
-                let track_depth = 0
-                if (tracktype == "gff" || tracktype == "bed") {
-                    let intervals = plot_intervals(track[1], y_offset)
-                    track_depth = intervals.track_depth
-                    scaled_traces.push({
-                        x: intervals.x,
-                        y: intervals.y,
-                        text: intervals.text,
-                        type: "scattergl",
-                        name: trackname,
-                        tracktype: tracktype,
-                        connectgaps: false,
-                        showlegend: false,
-                        line: { width: 2, color: track_color },
-                        mode: "lines+markers",
-                        hoverinfo: "text+x+name",
-                        hoverlabel: { namelength: -1 },
-                        marker: {
-                            size: 6,
-                            symbol: "square",
-                            color: track_color,
-                            line: { width: 1, color: "white" },
-                        },
-                    })
-                } else {
-                    scaled_traces.push({
-                        x: track[1].x,
-                        y: Array(track[1].x.length).fill(y_offset),
-                        mode: "markers",
-                        type: "scattergl",
-                        name: trackname,
-                        text: track[1].text.map((i) => {
-                            return i.replaceAll(";", "<br>")
-                        }),
-                        hoverinfo: "text+x+name",
-                        hoverlabel: { namelength: -1 },
-                        marker: {
-                            size: 6,
-                            symbol: "square",
-                            color: track_color,
-                            line: { width: 1, color: "white" },
-                        },
-                        tracktype: tracktype,
-                    })
+
+        if ("annotations" in data[chr]) {
+            for (const tracktype of Object.keys(data[chr].annotations)) {
+                for (const track of data[chr].annotations[tracktype]) {
+                    let trackname = track[0]
+                    let track_color = dark2[track_idx % dark2.length]
+                    let track_depth = 0
+                    if (tracktype == "gff" || tracktype == "bed") {
+                        let intervals = plot_intervals(track[1], y_offset)
+                        track_depth = intervals.track_depth
+                        scaled_traces.push({
+                            x: intervals.x,
+                            y: intervals.y,
+                            text: intervals.text,
+                            type: "scattergl",
+                            name: trackname,
+                            tracktype: tracktype,
+                            connectgaps: false,
+                            showlegend: false,
+                            line: { width: 2, color: track_color },
+                            mode: "lines+markers",
+                            hoverinfo: "text+x+name",
+                            hoverlabel: { namelength: -1 },
+                            marker: {
+                                size: 6,
+                                symbol: "square",
+                                color: track_color,
+                                line: { width: 1, color: "white" },
+                            },
+                        })
+                    } else {
+                        scaled_traces.push({
+                            x: track[1].x,
+                            y: Array(track[1].x.length).fill(y_offset),
+                            mode: "markers",
+                            type: "scattergl",
+                            name: trackname,
+                            text: track[1].text.map((i) => {
+                                return i.replaceAll(";", "<br>")
+                            }),
+                            hoverinfo: "text+x+name",
+                            hoverlabel: { namelength: -1 },
+                            marker: {
+                                size: 6,
+                                symbol: "square",
+                                color: track_color,
+                                line: { width: 1, color: "white" },
+                            },
+                            tracktype: tracktype,
+                        })
+                    }
+                    y_offset = track_depth - 0.10
+                    track_idx += 1
                 }
-                y_offset = track_depth - 0.10
-                track_idx += 1
             }
         }
 
@@ -849,7 +852,7 @@
         let seen = new Set()
 
         for (const chr of data.chromosomes) {
-            if ("gff" in data[chr].annotations) {
+            if ("annotations" in data[chr] && "gff" in data[chr].annotations) {
                 for (const gff of data[chr].annotations.gff) {
                     let filename = gff[0]
                     let gene_data = gff[1]
