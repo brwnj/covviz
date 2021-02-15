@@ -77,9 +77,6 @@ log.info("Distance threshold           --distancethreshold: ${params.distancethr
 log.info("Significant region slop      --slop             : ${params.slop}")
 log.info("\n")
 log.info("====================================================================")
-log.info("covviz is free and unrestricted for non-commercial use.       ")
-log.info("For commercial use, please contact [bpedersen@base2genomics.com].  ")
-log.info("====================================================================")
 log.info("\n")
 
 // instantiate files
