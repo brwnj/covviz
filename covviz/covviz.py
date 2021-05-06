@@ -202,7 +202,10 @@ def cli():
 
     logger.info("parsing bed file (%s)" % args.bed)
 
-    exclude = re.compile(args.exclude.replace("~", "").replace(",", "|"))
+    if args.exclude:
+        exclude = re.compile(args.exclude.replace("~", "").replace(",", "|"))
+    else:
+        exclude = re.compile(r"/")
 
     traces = parse_bed(
         args.bed,
