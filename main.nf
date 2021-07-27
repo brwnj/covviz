@@ -150,9 +150,10 @@ process build_report {
 
     script:
     gff_opt = params.gff ? "--gff ${gff}" : ""
+    gff_attr = params.gffattr ? "--gff-attr ${gffattr}" : ""
     """
     covviz --min-samples ${params.minsamples} --sex-chroms ${params.sexchroms} --exclude '${params.exclude}' \
         --z-threshold ${params.zthreshold} --distance-threshold ${params.distancethreshold} \
-        --slop ${params.slop} --ped ${ped} ${gff_opt} --skip-norm ${bed}
+        --slop ${params.slop} --ped ${ped} ${gff_opt} ${gff_attr} --skip-norm ${bed}
     """
 }
