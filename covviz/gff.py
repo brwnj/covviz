@@ -20,7 +20,12 @@ def parse_gff(path, traces, exclude, ftype="gene", regex="Name="):
     trace_name = os.path.basename(path).partition(".gff")[0].partition(".gtf")[0]
     with gzopen(path) as fh:
         cleaned = filterfalse(lambda i: i[0] == "#", fh)
-        name_re = re.compile(r"%s([^;]*)" % regex)
+
+        if regex != "Name=":
+            name_re = re.compile(r"(?:%s([^;]*))|(?:gene_name=([^;]*))|(?:Name=([^;]*))|(?:name=([^;]*))" % regex)
+        else:
+            name_re = re.compile(r"(?:gene_name=([^;]*))|(?:Name=([^;]*))|(?:name=([^;]*))")
+
         for chrom, entries in groupby(
             cleaned, key=lambda i: i.partition("\t")[0].lstrip("chr")
         ):
@@ -48,10 +53,11 @@ def parse_gff(path, traces, exclude, ftype="gene", regex="Name="):
                 start = int(toks[3])
                 end = int(toks[4])
                 try:
-                    name = name_re.findall(toks[8])[0]
+                    name = [i for i in name_re.findall(toks[8])[0] if i][0]
                     name = name.strip('"').strip("'")
                 except IndexError:
-                    name = ""
+                    # just grab the first item in the semi-colon delimited list
+                    name = re.findall(r"([^;]*)", toks[8])[0]
                 genes.append([start, end, name])
             traces[chrom]["annotations"]["gff"].append([trace_name, genes])
     return traces
